@@ -2,6 +2,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { getTrendingAnime } from "@/lib/apis/anilist";
 import { getTrendingManga } from "@/lib/apis/kitsu";
 import { getConnectionsHealth } from "@/lib/connections/health";
+import { isDiagnosticsEnabled } from "@/lib/env";
 
 type FeedCardItem = {
   id: string | number;
@@ -103,12 +104,13 @@ async function loadDashboardFeeds() {
 }
 
 export default async function Home() {
-  const health = await getConnectionsHealth();
+  const diagnosticsEnabled = isDiagnosticsEnabled();
+  const health = diagnosticsEnabled ? await getConnectionsHealth() : null;
   const feeds = await loadDashboardFeeds();
 
   return (
     <AppShell>
-      <section className="grid gap-6 lg:grid-cols-3">
+      <section className={`grid gap-6 ${diagnosticsEnabled ? "lg:grid-cols-3" : "lg:grid-cols-1"}`}>
         <article className="obsidian-card rounded-sm p-6 lg:col-span-2">
           <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-cyan-300/80">
             Kigen Core
@@ -132,47 +134,56 @@ export default async function Home() {
                 Shell + Live Data
               </p>
             </div>
-            <div className="rounded-sm border border-white/10 bg-black/30 p-4">
-              <p className="text-[11px] uppercase tracking-widest text-slate-400">Health Check</p>
-              <p className="mt-1 font-headline text-xl font-bold text-white">
-                {health.items.filter((item) => item.status === "ok").length}/
-                {health.items.length} OK
-              </p>
-            </div>
+            {diagnosticsEnabled ? (
+              <div className="rounded-sm border border-white/10 bg-black/30 p-4">
+                <p className="text-[11px] uppercase tracking-widest text-slate-400">Health Check</p>
+                <p className="mt-1 font-headline text-xl font-bold text-white">
+                  {health?.items.filter((item) => item.status === "ok").length}/
+                  {health?.items.length} OK
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-sm border border-white/10 bg-black/30 p-4">
+                <p className="text-[11px] uppercase tracking-widest text-slate-400">Modo</p>
+                <p className="mt-1 font-headline text-xl font-bold text-emerald-300">Public</p>
+              </div>
+            )}
           </div>
         </article>
 
-        <article className="obsidian-card rounded-sm p-6">
-          <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-cyan-300/80">
-            Conexiones
-          </p>
+        {diagnosticsEnabled && health ? (
+          <article className="obsidian-card rounded-sm p-6">
+            <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-cyan-300/80">
+              Conexiones
+            </p>
 
-          <ul className="space-y-3">
-            {health.items.map((item) => (
-              <li
-                key={item.name}
-                className="rounded-sm border border-white/10 bg-black/30 px-3 py-3"
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold uppercase tracking-wider text-slate-200">
-                    {item.name}
+            <ul className="space-y-3">
+              {health.items.map((item) => (
+                <li
+                  key={item.name}
+                  className="rounded-sm border border-white/10 bg-black/30 px-3 py-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold uppercase tracking-wider text-slate-200">
+                      {item.name}
+                    </p>
+                    <p className={`text-xs font-bold uppercase ${statusColor(item.status)}`}>
+                      {item.status}
+                    </p>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400">{item.details}</p>
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {item.latencyMs ? `${item.latencyMs}ms` : "sin medicion"}
                   </p>
-                  <p className={`text-xs font-bold uppercase ${statusColor(item.status)}`}>
-                    {item.status}
-                  </p>
-                </div>
-                <p className="mt-1 text-xs text-slate-400">{item.details}</p>
-                <p className="mt-1 text-[11px] text-slate-500">
-                  {item.latencyMs ? `${item.latencyMs}ms` : "sin medicion"}
-                </p>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
 
-          <p className="mt-4 text-[11px] text-slate-500">
-            Endpoint JSON: /api/health/connections
-          </p>
-        </article>
+            <p className="mt-4 text-[11px] text-slate-500">
+              Endpoint JSON: /api/health/connections
+            </p>
+          </article>
+        ) : null}
       </section>
 
       <section className="mt-6 grid gap-6 lg:grid-cols-2">
