@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/shell/app-shell";
 import { getTrendingAnime } from "@/lib/apis/anilist";
+import { getTodayReleases } from "@/lib/apis/jikan";
 import { getTrendingManga } from "@/lib/apis/kitsu";
 import { getConnectionsHealth } from "@/lib/connections/health";
 import { isDiagnosticsEnabled } from "@/lib/env";
@@ -8,6 +9,15 @@ type FeedCardItem = {
   id: string | number;
   title: string;
   subtitle: string;
+  imageUrl: string | null;
+  score: number | null;
+  source: string;
+};
+
+type ReleaseCardItem = {
+  id: number;
+  title: string;
+  airingAt: string;
   imageUrl: string | null;
   score: number | null;
   source: string;
@@ -67,11 +77,42 @@ function fallbackMangaItems(): FeedCardItem[] {
   ];
 }
 
+function fallbackReleaseItems(): ReleaseCardItem[] {
+  return [
+    {
+      id: 1,
+      title: "Neon Genesis Rebuild",
+      airingAt: "04:30 PM JST",
+      imageUrl: null,
+      score: 8.2,
+      source: "Fallback",
+    },
+    {
+      id: 2,
+      title: "Cyborg Protocol 7",
+      airingAt: "09:15 PM JST",
+      imageUrl: null,
+      score: 7.9,
+      source: "Fallback",
+    },
+    {
+      id: 3,
+      title: "Astral Blades",
+      airingAt: "11:05 PM JST",
+      imageUrl: null,
+      score: null,
+      source: "Fallback",
+    },
+  ];
+}
+
 async function loadDashboardFeeds() {
   let animeItems: FeedCardItem[] = fallbackAnimeItems();
   let mangaItems: FeedCardItem[] = fallbackMangaItems();
+  let releaseItems: ReleaseCardItem[] = fallbackReleaseItems();
   let animeLive = false;
   let mangaLive = false;
+  let releaseLive = false;
 
   try {
     const anilist = await getTrendingAnime(6);
@@ -95,11 +136,24 @@ async function loadDashboardFeeds() {
     mangaItems = fallbackMangaItems();
   }
 
+  try {
+    const jikanReleases = await getTodayReleases(8);
+
+    if (jikanReleases.length > 0) {
+      releaseItems = jikanReleases;
+      releaseLive = true;
+    }
+  } catch {
+    releaseItems = fallbackReleaseItems();
+  }
+
   return {
     animeItems,
     mangaItems,
+    releaseItems,
     animeLive,
     mangaLive,
+    releaseLive,
   };
 }
 
@@ -184,6 +238,42 @@ export default async function Home() {
             </p>
           </article>
         ) : null}
+      </section>
+
+      <section className="mt-6">
+        <article className="obsidian-card rounded-sm p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="font-headline text-2xl font-extrabold tracking-tight text-white">
+              Today Releases
+            </h3>
+            <span
+              className={`text-xs font-bold uppercase tracking-widest ${
+                feeds.releaseLive ? "text-emerald-300" : "text-amber-300"
+              }`}
+            >
+              {feeds.releaseLive ? "live jikan" : "fallback"}
+            </span>
+          </div>
+
+          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {feeds.releaseItems.map((item, index) => (
+              <li key={`${item.id}-${index}`} className="rounded-sm border border-white/10 bg-black/30 p-3">
+                <div className="mb-3 h-36 w-full overflow-hidden rounded-sm border border-white/10 bg-slate-900">
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full bg-linear-to-br from-cyan-300/20 to-fuchsia-500/20" />
+                  )}
+                </div>
+                <p className="line-clamp-2 text-sm font-semibold text-white">{item.title}</p>
+                <p className="mt-2 text-xs uppercase tracking-wider text-slate-400">{item.airingAt}</p>
+                <p className="mt-2 text-xs text-slate-500">
+                  {item.score ? `${item.score}/10` : "sin score"} - {item.source}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </article>
       </section>
 
       <section className="mt-6 grid gap-6 lg:grid-cols-2">
