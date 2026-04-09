@@ -10,6 +10,7 @@ export const env = {
   ),
   ANILIST_API_URL: getEnv("ANILIST_API_URL") || "https://graphql.anilist.co",
   JIKAN_API_URL: getEnv("JIKAN_API_URL") || "https://api.jikan.moe/v4",
+  KITSU_API_URL: getEnv("KITSU_API_URL") || "https://kitsu.io/api/edge",
   MANGADEX_API_URL: getEnv("MANGADEX_API_URL") || "https://api.mangadex.org",
 };
 

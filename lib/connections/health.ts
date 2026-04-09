@@ -3,7 +3,7 @@ import { env, hasSupabaseConfig } from "@/lib/env";
 type ConnectionStatus = "ok" | "error" | "missing-config";
 
 export type ConnectionHealthItem = {
-  name: "supabase" | "anilist" | "jikan" | "mangadex";
+  name: "supabase" | "anilist" | "jikan" | "kitsu";
   status: ConnectionStatus;
   latencyMs: number | null;
   details: string;
@@ -113,19 +113,19 @@ async function checkJikan(): Promise<ConnectionHealthItem> {
   }
 }
 
-async function checkMangaDex(): Promise<ConnectionHealthItem> {
+async function checkKitsu(): Promise<ConnectionHealthItem> {
   try {
-    const result = await timedRequest(`${env.MANGADEX_API_URL}/ping`);
+    const result = await timedRequest(`${env.KITSU_API_URL}/manga?page[limit]=1`);
 
     return {
-      name: "mangadex",
+      name: "kitsu",
       status: result.ok ? "ok" : "error",
       latencyMs: result.latencyMs,
       details: `HTTP ${result.status}`,
     };
   } catch (error) {
     return {
-      name: "mangadex",
+      name: "kitsu",
       status: "error",
       latencyMs: null,
       details: error instanceof Error ? error.message : "Error desconocido",
@@ -134,15 +134,15 @@ async function checkMangaDex(): Promise<ConnectionHealthItem> {
 }
 
 export async function getConnectionsHealth(): Promise<ConnectionsHealth> {
-  const [supabase, anilist, jikan, mangadex] = await Promise.all([
+  const [supabase, anilist, jikan, kitsu] = await Promise.all([
     checkSupabase(),
     checkAniList(),
     checkJikan(),
-    checkMangaDex(),
+    checkKitsu(),
   ]);
 
   return {
     checkedAt: new Date().toISOString(),
-    items: [supabase, anilist, jikan, mangadex],
+    items: [supabase, anilist, jikan, kitsu],
   };
 }
