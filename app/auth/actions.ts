@@ -49,12 +49,30 @@ async function signInWithProvider(provider: OAuthProvider, nextPath: string) {
   redirect(data.url);
 }
 
+function nextFromFormData(formData: FormData, fallback = "/"): string {
+  const candidate = formData.get("next");
+
+  if (typeof candidate !== "string") {
+    return fallback;
+  }
+
+  return sanitizeNextPath(candidate);
+}
+
 export async function signInWithGoogle() {
   await signInWithProvider("google", "/");
 }
 
 export async function signInWithDiscord() {
   await signInWithProvider("discord", "/");
+}
+
+export async function signInWithGoogleWithNext(formData: FormData) {
+  await signInWithProvider("google", nextFromFormData(formData));
+}
+
+export async function signInWithDiscordWithNext(formData: FormData) {
+  await signInWithProvider("discord", nextFromFormData(formData));
 }
 
 export async function signOut() {

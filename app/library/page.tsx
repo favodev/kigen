@@ -20,12 +20,20 @@ export default async function LibraryPage() {
             La biblioteca personal depende de auth para guardar tracking por usuario.
           </p>
 
-          <Link
-            href="/"
-            className="mt-5 inline-flex rounded-sm border border-cyan-300/50 px-4 py-2 text-xs font-bold uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-300/10"
-          >
-            Volver al dashboard
-          </Link>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link
+              href="/login?next=/library"
+              className="inline-flex rounded-sm border border-cyan-300/50 px-4 py-2 text-xs font-bold uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-300/10"
+            >
+              Ir a login
+            </Link>
+            <Link
+              href="/"
+              className="inline-flex rounded-sm border border-white/20 px-4 py-2 text-xs font-bold uppercase tracking-widest text-slate-300 transition-colors hover:border-cyan-300/40 hover:text-cyan-300"
+            >
+              Volver al dashboard
+            </Link>
+          </div>
         </section>
       </main>
     );
