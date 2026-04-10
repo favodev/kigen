@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type MediaKind = "ANIME" | "MANGA";
+type LibraryStatus = "PLAN" | "WATCHING" | "READING" | "COMPLETED" | "PAUSED" | "DROPPED";
 
 type ParsedLibraryInput = {
   externalId: string;
@@ -17,6 +18,30 @@ type ParsedLibraryInput = {
   score: number | null;
   nextPath: string;
 };
+
+function parseStatus(raw: string): LibraryStatus {
+  if (
+    raw === "WATCHING" ||
+    raw === "READING" ||
+    raw === "COMPLETED" ||
+    raw === "PAUSED" ||
+    raw === "DROPPED"
+  ) {
+    return raw;
+  }
+
+  return "PLAN";
+}
+
+function parseProgress(raw: string): number {
+  const parsed = Number(raw);
+
+  if (!Number.isFinite(parsed)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.floor(parsed));
+}
 
 function sanitizePath(path: string): string {
   if (!path.startsWith("/")) {
@@ -144,5 +169,46 @@ export async function removeFromLibrary(formData: FormData) {
   }
 
   revalidatePath("/");
+  revalidatePath("/library");
+}
+
+export async function updateLibraryEntry(formData: FormData) {
+  const entryId = String(formData.get("entryId") ?? "").trim();
+  const status = parseStatus(String(formData.get("status") ?? "PLAN"));
+  const progress = parseProgress(String(formData.get("progress") ?? "0"));
+  const notesRaw = String(formData.get("notes") ?? "").trim();
+  const notes = notesRaw.length > 0 ? notesRaw : null;
+
+  if (!entryId) {
+    return;
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login?next=/library");
+  }
+
+  const { error } = await supabase
+    .from("user_media_list")
+    .update({
+      status,
+      progress,
+      notes,
+    })
+    .eq("id", entryId)
+    .eq("user_id", user.id);
+
+  if (error?.code === "42P01") {
+    redirect("/library?setup=required");
+  }
+
+  if (error) {
+    redirect("/library?library=update-failed");
+  }
+
   revalidatePath("/library");
 }

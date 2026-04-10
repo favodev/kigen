@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { removeFromLibrary } from "@/app/library/actions";
+import { removeFromLibrary, updateLibraryEntry } from "@/app/library/actions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type LibraryPageProps = {
@@ -50,7 +50,7 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
 
   const { data: entries, error } = await supabase
     .from("user_media_list")
-    .select("id, title, subtitle, image_url, score, media_kind, status, source, created_at")
+    .select("id, title, subtitle, image_url, score, media_kind, status, progress, notes, source, created_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(100);
@@ -90,6 +90,17 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
           </div>
         ) : null}
 
+        {params.library === "update-failed" ? (
+          <div className="mt-5 rounded-sm border border-rose-300/30 bg-rose-300/5 p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-rose-300">
+              Update failed
+            </p>
+            <p className="mt-2 text-sm text-slate-300">
+              No se pudo actualizar el item ahora. Reintenta en unos segundos.
+            </p>
+          </div>
+        ) : null}
+
         {!setupRequired && (entries?.length ?? 0) === 0 ? (
           <p className="mt-4 text-sm leading-6 text-slate-300">
             Tu biblioteca esta vacia. Desde el dashboard ya podes guardar anime y manga en un click.
@@ -121,9 +132,48 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
                     {entry.media_kind} - {entry.status} - {entry.source}
                   </p>
                   {entry.subtitle ? <p className="mt-1 text-xs text-slate-400">{entry.subtitle}</p> : null}
-                  <p className="mt-2 text-xs text-slate-500">
-                    {entry.score ? `${entry.score}/10` : "sin score"}
-                  </p>
+                  <p className="mt-2 text-xs text-slate-500">{entry.score ? `${entry.score}/10` : "sin score"}</p>
+
+                  <form action={updateLibraryEntry} className="mt-3 grid gap-2 sm:grid-cols-3">
+                    <input type="hidden" name="entryId" value={entry.id} />
+
+                    <select
+                      name="status"
+                      defaultValue={entry.status}
+                      className="rounded-sm border border-white/15 bg-black/40 px-2 py-2 text-[11px] font-semibold uppercase tracking-widest text-slate-200"
+                    >
+                      <option value="PLAN">Plan</option>
+                      <option value="WATCHING">Watching</option>
+                      <option value="READING">Reading</option>
+                      <option value="COMPLETED">Completed</option>
+                      <option value="PAUSED">Paused</option>
+                      <option value="DROPPED">Dropped</option>
+                    </select>
+
+                    <input
+                      type="number"
+                      name="progress"
+                      min={0}
+                      defaultValue={entry.progress}
+                      className="rounded-sm border border-white/15 bg-black/40 px-2 py-2 text-[11px] font-semibold uppercase tracking-widest text-slate-200"
+                      placeholder="Progress"
+                    />
+
+                    <button
+                      type="submit"
+                      className="rounded-sm border border-cyan-300/40 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-300/10"
+                    >
+                      guardar cambios
+                    </button>
+
+                    <textarea
+                      name="notes"
+                      defaultValue={entry.notes ?? ""}
+                      rows={2}
+                      className="sm:col-span-3 rounded-sm border border-white/15 bg-black/40 px-2 py-2 text-[11px] text-slate-300"
+                      placeholder="Notas privadas"
+                    />
+                  </form>
                 </div>
 
                 <div className="shrink-0 self-center">
