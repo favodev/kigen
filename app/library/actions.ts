@@ -51,6 +51,16 @@ function sanitizePath(path: string): string {
   return path;
 }
 
+function nextPathFromFormData(formData: FormData, fallback: string): string {
+  const raw = String(formData.get("nextPath") ?? "").trim();
+
+  if (!raw) {
+    return fallback;
+  }
+
+  return sanitizePath(raw);
+}
+
 function parseMediaKind(raw: string): MediaKind {
   return raw === "MANGA" ? "MANGA" : "ANIME";
 }
@@ -140,6 +150,7 @@ export async function addToLibrary(formData: FormData) {
 
 export async function removeFromLibrary(formData: FormData) {
   const entryId = String(formData.get("entryId") ?? "").trim();
+  const nextPath = nextPathFromFormData(formData, "/library");
 
   if (!entryId) {
     return;
@@ -151,7 +162,7 @@ export async function removeFromLibrary(formData: FormData) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login?next=/library");
+    redirect(`/login?next=${encodeURIComponent(nextPath)}`);
   }
 
   const { error } = await supabase
@@ -161,19 +172,20 @@ export async function removeFromLibrary(formData: FormData) {
     .eq("user_id", user.id);
 
   if (error?.code === "42P01") {
-    redirect("/library?setup=required");
+    redirect(`${nextPath}?setup=required`);
   }
 
   if (error) {
-    redirect("/library?library=remove-failed");
+    redirect(`${nextPath}?library=remove-failed`);
   }
 
-  revalidatePath("/");
+  revalidatePath(nextPath);
   revalidatePath("/library");
 }
 
 export async function updateLibraryEntry(formData: FormData) {
   const entryId = String(formData.get("entryId") ?? "").trim();
+  const nextPath = nextPathFromFormData(formData, "/library");
   const status = parseStatus(String(formData.get("status") ?? "PLAN"));
   const progress = parseProgress(String(formData.get("progress") ?? "0"));
   const notesRaw = String(formData.get("notes") ?? "").trim();
@@ -189,7 +201,7 @@ export async function updateLibraryEntry(formData: FormData) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login?next=/library");
+    redirect(`/login?next=${encodeURIComponent(nextPath)}`);
   }
 
   const { error } = await supabase
@@ -203,12 +215,13 @@ export async function updateLibraryEntry(formData: FormData) {
     .eq("user_id", user.id);
 
   if (error?.code === "42P01") {
-    redirect("/library?setup=required");
+    redirect(`${nextPath}?setup=required`);
   }
 
   if (error) {
-    redirect("/library?library=update-failed");
+    redirect(`${nextPath}?library=update-failed`);
   }
 
+  revalidatePath(nextPath);
   revalidatePath("/library");
 }

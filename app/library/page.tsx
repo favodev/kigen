@@ -136,6 +136,7 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
 
                   <form action={updateLibraryEntry} className="mt-3 grid gap-2 sm:grid-cols-3">
                     <input type="hidden" name="entryId" value={entry.id} />
+                    <input type="hidden" name="nextPath" value="/library" />
 
                     <select
                       name="status"
@@ -179,6 +180,7 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
                 <div className="shrink-0 self-center">
                   <form action={removeFromLibrary}>
                     <input type="hidden" name="entryId" value={entry.id} />
+                    <input type="hidden" name="nextPath" value="/library" />
                     <button
                       type="submit"
                       className="rounded-sm border border-rose-300/40 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-rose-300 transition-colors hover:bg-rose-300/10"
