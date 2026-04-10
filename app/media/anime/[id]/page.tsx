@@ -104,8 +104,8 @@ export default async function AnimeDetailPage({ params, searchParams }: AnimeDet
           </div>
         ) : null}
 
-        <div className="mt-4 grid gap-5 md:grid-cols-[220px_1fr]">
-          <div className="overflow-hidden rounded-sm border border-white/10 bg-slate-900">
+        <div className="mt-4 grid items-start gap-5 md:grid-cols-[220px_1fr]">
+          <div className="aspect-2/3 w-full self-start overflow-hidden rounded-sm border border-white/10 bg-slate-900">
             {anime.imageUrl ? (
               <img src={anime.imageUrl} alt={anime.title} className="h-full w-full object-cover" />
             ) : (
