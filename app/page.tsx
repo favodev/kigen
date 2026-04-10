@@ -37,6 +37,22 @@ function toLibraryKey(source: string, externalId: string | number): string {
   return `${source}:${String(externalId)}`;
 }
 
+function animeDetailHref(item: FeedCardItem): string | null {
+  if (item.source !== "AniList") {
+    return null;
+  }
+
+  return `/media/anime/${String(item.id)}`;
+}
+
+function mangaDetailHref(item: FeedCardItem): string | null {
+  if (item.source !== "Kitsu") {
+    return null;
+  }
+
+  return `/media/manga/${String(item.id)}`;
+}
+
 async function loadLibrarySnapshot() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -370,19 +386,42 @@ export default async function Home({ searchParams }: HomePageProps) {
           <ul className="space-y-3">
             {feeds.animeItems.map((item) => (
               <li key={item.id} className="flex gap-3 rounded-sm border border-white/10 bg-black/30 p-3">
-                <div className="h-20 w-14 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900">
-                  {item.imageUrl ? (
-                    <img
-                      src={item.imageUrl}
-                      alt={item.title}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="h-full w-full bg-linear-to-br from-cyan-300/20 to-indigo-500/20" />
-                  )}
-                </div>
+                {animeDetailHref(item) ? (
+                  <Link
+                    href={animeDetailHref(item)!}
+                    className="h-20 w-14 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900"
+                  >
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.title}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full bg-linear-to-br from-cyan-300/20 to-indigo-500/20" />
+                    )}
+                  </Link>
+                ) : (
+                  <div className="h-20 w-14 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900">
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.title}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full bg-linear-to-br from-cyan-300/20 to-indigo-500/20" />
+                    )}
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-white">{item.title}</p>
+                  {animeDetailHref(item) ? (
+                    <Link href={animeDetailHref(item)!} className="truncate font-semibold text-white hover:text-cyan-300">
+                      {item.title}
+                    </Link>
+                  ) : (
+                    <p className="truncate font-semibold text-white">{item.title}</p>
+                  )}
                   <p className="mt-1 text-xs uppercase tracking-wider text-slate-400">
                     {item.subtitle}
                   </p>
@@ -464,19 +503,42 @@ export default async function Home({ searchParams }: HomePageProps) {
           <ul className="space-y-3">
             {feeds.mangaItems.map((item) => (
               <li key={item.id} className="flex gap-3 rounded-sm border border-white/10 bg-black/30 p-3">
-                <div className="h-20 w-14 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900">
-                  {item.imageUrl ? (
-                    <img
-                      src={item.imageUrl}
-                      alt={item.title}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="h-full w-full bg-linear-to-br from-violet-300/20 to-cyan-400/20" />
-                  )}
-                </div>
+                {mangaDetailHref(item) ? (
+                  <Link
+                    href={mangaDetailHref(item)!}
+                    className="h-20 w-14 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900"
+                  >
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.title}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full bg-linear-to-br from-violet-300/20 to-cyan-400/20" />
+                    )}
+                  </Link>
+                ) : (
+                  <div className="h-20 w-14 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900">
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.title}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full bg-linear-to-br from-violet-300/20 to-cyan-400/20" />
+                    )}
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-white">{item.title}</p>
+                  {mangaDetailHref(item) ? (
+                    <Link href={mangaDetailHref(item)!} className="truncate font-semibold text-white hover:text-cyan-300">
+                      {item.title}
+                    </Link>
+                  ) : (
+                    <p className="truncate font-semibold text-white">{item.title}</p>
+                  )}
                   <p className="mt-1 text-xs uppercase tracking-wider text-slate-400">
                     {item.subtitle}
                   </p>

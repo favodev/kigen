@@ -9,6 +9,22 @@ export type AnimeFeedItem = {
   source: "AniList";
 };
 
+export type AnimeDetail = {
+  id: number;
+  title: string;
+  description: string | null;
+  imageUrl: string | null;
+  bannerUrl: string | null;
+  score: number | null;
+  episodes: number | null;
+  duration: number | null;
+  format: string | null;
+  status: string | null;
+  seasonYear: number | null;
+  genres: string[];
+  source: "AniList";
+};
+
 type AniListResponse = {
   data?: {
     Page?: {
@@ -27,6 +43,27 @@ type AniListResponse = {
         status?: string | null;
         seasonYear?: number | null;
       }>;
+    };
+    Media?: {
+      id: number;
+      title?: {
+        romaji?: string | null;
+        english?: string | null;
+      };
+      description?: string | null;
+      coverImage?: {
+        extraLarge?: string | null;
+        large?: string | null;
+        medium?: string | null;
+      };
+      bannerImage?: string | null;
+      averageScore?: number | null;
+      episodes?: number | null;
+      duration?: number | null;
+      format?: string | null;
+      status?: string | null;
+      seasonYear?: number | null;
+      genres?: string[];
     };
   };
   errors?: Array<{ message: string }>;
@@ -54,12 +91,46 @@ const TRENDING_ANIME_QUERY = `
   }
 `;
 
+const ANIME_DETAIL_QUERY = `
+  query AnimeDetail($id: Int!) {
+    Media(id: $id, type: ANIME) {
+      id
+      title {
+        romaji
+        english
+      }
+      description(asHtml: false)
+      coverImage {
+        extraLarge
+        large
+        medium
+      }
+      bannerImage
+      averageScore
+      episodes
+      duration
+      format
+      status
+      seasonYear
+      genres
+    }
+  }
+`;
+
 function normalizeStatus(value: string | null | undefined): string {
   if (!value) {
     return "Unknown";
   }
 
   return value.replaceAll("_", " ").toLowerCase();
+}
+
+function normalizeDescription(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+
+  return value.replaceAll("<br>", "\n").trim();
 }
 
 export async function getTrendingAnime(limit = 6): Promise<AnimeFeedItem[]> {
@@ -108,4 +179,57 @@ export async function getTrendingAnime(limit = 6): Promise<AnimeFeedItem[]> {
       source: "AniList" as const,
     };
   });
+}
+
+export async function getAnimeById(id: number): Promise<AnimeDetail | null> {
+  const response = await fetch(env.ANILIST_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      query: ANIME_DETAIL_QUERY,
+      variables: {
+        id,
+      },
+    }),
+    next: { revalidate: 3600 },
+  });
+
+  if (!response.ok) {
+    throw new Error(`AniList HTTP ${response.status}`);
+  }
+
+  const data = (await response.json()) as AniListResponse;
+
+  if (data.errors?.length) {
+    throw new Error(data.errors[0]?.message ?? "AniList returned errors");
+  }
+
+  const media = data.data?.Media;
+
+  if (!media) {
+    return null;
+  }
+
+  const score =
+    typeof media.averageScore === "number"
+      ? Math.round((media.averageScore / 10) * 10) / 10
+      : null;
+
+  return {
+    id: media.id,
+    title: media.title?.english || media.title?.romaji || "Untitled anime",
+    description: normalizeDescription(media.description),
+    imageUrl: media.coverImage?.extraLarge || media.coverImage?.large || media.coverImage?.medium || null,
+    bannerUrl: media.bannerImage || null,
+    score,
+    episodes: media.episodes ?? null,
+    duration: media.duration ?? null,
+    format: media.format ?? null,
+    status: media.status ? normalizeStatus(media.status) : null,
+    seasonYear: media.seasonYear ?? null,
+    genres: media.genres ?? [],
+    source: "AniList",
+  };
 }
