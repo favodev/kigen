@@ -12,6 +12,7 @@
 /docs
 /.agents
 /.claude
+/supabase
 
 # testing
 /coverage

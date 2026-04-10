@@ -1,9 +1,13 @@
+import Link from "next/link";
+
+import { addToLibrary } from "@/app/library/actions";
 import { AppShell } from "@/components/shell/app-shell";
 import { getTrendingAnime } from "@/lib/apis/anilist";
 import { getTodayReleases } from "@/lib/apis/jikan";
 import { getTrendingManga } from "@/lib/apis/kitsu";
 import { getConnectionsHealth } from "@/lib/connections/health";
 import { isDiagnosticsEnabled } from "@/lib/env";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type FeedCardItem = {
   id: string | number;
@@ -22,6 +26,47 @@ type ReleaseCardItem = {
   score: number | null;
   source: string;
 };
+
+type HomePageProps = {
+  searchParams?: Promise<{
+    library?: string;
+  }>;
+};
+
+function toLibraryKey(source: string, externalId: string | number): string {
+  return `${source}:${String(externalId)}`;
+}
+
+async function loadLibrarySnapshot() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      isAuthenticated: false,
+      savedKeys: new Set<string>(),
+    };
+  }
+
+  const { data } = await supabase
+    .from("user_media_list")
+    .select("source, external_id")
+    .eq("user_id", user.id)
+    .limit(500);
+
+  const savedKeys = new Set<string>();
+
+  (data ?? []).forEach((item) => {
+    savedKeys.add(toLibraryKey(item.source, item.external_id));
+  });
+
+  return {
+    isAuthenticated: true,
+    savedKeys,
+  };
+}
 
 function statusColor(status: "ok" | "error" | "missing-config") {
   if (status === "ok") {
@@ -157,10 +202,12 @@ async function loadDashboardFeeds() {
   };
 }
 
-export default async function Home() {
+export default async function Home({ searchParams }: HomePageProps) {
+  const params = (await searchParams) ?? {};
   const diagnosticsEnabled = isDiagnosticsEnabled();
   const health = diagnosticsEnabled ? await getConnectionsHealth() : null;
   const feeds = await loadDashboardFeeds();
+  const library = await loadLibrarySnapshot();
 
   return (
     <AppShell>
@@ -240,6 +287,35 @@ export default async function Home() {
         ) : null}
       </section>
 
+      {params.library === "setup-required" ? (
+        <section className="mt-6">
+          <article className="obsidian-card rounded-sm border border-amber-300/30 bg-amber-300/5 p-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-300">
+              Library Setup Required
+            </p>
+            <p className="mt-2 text-sm text-slate-300">
+              Aplique la migracion de Supabase para habilitar persistencia de biblioteca.
+            </p>
+            <p className="mt-2 text-xs text-slate-400">
+              Archivo: supabase/migrations/20260410122000_create_user_media_list.sql
+            </p>
+          </article>
+        </section>
+      ) : null}
+
+      {params.library === "save-failed" ? (
+        <section className="mt-6">
+          <article className="obsidian-card rounded-sm border border-rose-300/30 bg-rose-300/5 p-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-rose-300">
+              Library Save Failed
+            </p>
+            <p className="mt-2 text-sm text-slate-300">
+              No se pudo guardar este item ahora. Reintenta en unos segundos.
+            </p>
+          </article>
+        </section>
+      ) : null}
+
       <section className="mt-6">
         <article className="obsidian-card rounded-sm p-6">
           <div className="mb-4 flex items-center justify-between">
@@ -293,10 +369,7 @@ export default async function Home() {
 
           <ul className="space-y-3">
             {feeds.animeItems.map((item) => (
-              <li
-                key={item.id}
-                className="flex gap-3 rounded-sm border border-white/10 bg-black/30 p-3"
-              >
+              <li key={item.id} className="flex gap-3 rounded-sm border border-white/10 bg-black/30 p-3">
                 <div className="h-20 w-14 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900">
                   {item.imageUrl ? (
                     <img
@@ -308,7 +381,7 @@ export default async function Home() {
                     <div className="h-full w-full bg-linear-to-br from-cyan-300/20 to-indigo-500/20" />
                   )}
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-white">{item.title}</p>
                   <p className="mt-1 text-xs uppercase tracking-wider text-slate-400">
                     {item.subtitle}
@@ -316,6 +389,58 @@ export default async function Home() {
                   <p className="mt-2 text-xs text-slate-500">
                     {item.score ? `${item.score}/10` : "sin score"} - {item.source}
                   </p>
+                </div>
+                <div className="shrink-0 self-center">
+                  {(() => {
+                    const canSave = item.source !== "Fallback";
+                    const isSaved = library.savedKeys.has(toLibraryKey(item.source, item.id));
+
+                    if (!canSave) {
+                      return (
+                        <span className="rounded-sm border border-white/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                          offline
+                        </span>
+                      );
+                    }
+
+                    if (isSaved) {
+                      return (
+                        <span className="rounded-sm border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-emerald-300">
+                          en biblioteca
+                        </span>
+                      );
+                    }
+
+                    if (!library.isAuthenticated) {
+                      return (
+                        <Link
+                          href="/login?next=/"
+                          className="rounded-sm border border-cyan-300/40 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-300/10"
+                        >
+                          guardar
+                        </Link>
+                      );
+                    }
+
+                    return (
+                      <form action={addToLibrary}>
+                        <input type="hidden" name="externalId" value={String(item.id)} />
+                        <input type="hidden" name="title" value={item.title} />
+                        <input type="hidden" name="subtitle" value={item.subtitle} />
+                        <input type="hidden" name="imageUrl" value={item.imageUrl ?? ""} />
+                        <input type="hidden" name="score" value={item.score ?? ""} />
+                        <input type="hidden" name="source" value={item.source} />
+                        <input type="hidden" name="mediaKind" value="ANIME" />
+                        <input type="hidden" name="nextPath" value="/" />
+                        <button
+                          type="submit"
+                          className="rounded-sm border border-cyan-300/40 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-300/10"
+                        >
+                          guardar
+                        </button>
+                      </form>
+                    );
+                  })()}
                 </div>
               </li>
             ))}
@@ -338,10 +463,7 @@ export default async function Home() {
 
           <ul className="space-y-3">
             {feeds.mangaItems.map((item) => (
-              <li
-                key={item.id}
-                className="flex gap-3 rounded-sm border border-white/10 bg-black/30 p-3"
-              >
+              <li key={item.id} className="flex gap-3 rounded-sm border border-white/10 bg-black/30 p-3">
                 <div className="h-20 w-14 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900">
                   {item.imageUrl ? (
                     <img
@@ -353,7 +475,7 @@ export default async function Home() {
                     <div className="h-full w-full bg-linear-to-br from-violet-300/20 to-cyan-400/20" />
                   )}
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-white">{item.title}</p>
                   <p className="mt-1 text-xs uppercase tracking-wider text-slate-400">
                     {item.subtitle}
@@ -361,6 +483,58 @@ export default async function Home() {
                   <p className="mt-2 text-xs text-slate-500">
                     {item.score ? `${item.score}/10` : "sin score"} - {item.source}
                   </p>
+                </div>
+                <div className="shrink-0 self-center">
+                  {(() => {
+                    const canSave = item.source !== "Fallback";
+                    const isSaved = library.savedKeys.has(toLibraryKey(item.source, item.id));
+
+                    if (!canSave) {
+                      return (
+                        <span className="rounded-sm border border-white/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                          offline
+                        </span>
+                      );
+                    }
+
+                    if (isSaved) {
+                      return (
+                        <span className="rounded-sm border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-emerald-300">
+                          en biblioteca
+                        </span>
+                      );
+                    }
+
+                    if (!library.isAuthenticated) {
+                      return (
+                        <Link
+                          href="/login?next=/"
+                          className="rounded-sm border border-cyan-300/40 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-300/10"
+                        >
+                          guardar
+                        </Link>
+                      );
+                    }
+
+                    return (
+                      <form action={addToLibrary}>
+                        <input type="hidden" name="externalId" value={String(item.id)} />
+                        <input type="hidden" name="title" value={item.title} />
+                        <input type="hidden" name="subtitle" value={item.subtitle} />
+                        <input type="hidden" name="imageUrl" value={item.imageUrl ?? ""} />
+                        <input type="hidden" name="score" value={item.score ?? ""} />
+                        <input type="hidden" name="source" value={item.source} />
+                        <input type="hidden" name="mediaKind" value="MANGA" />
+                        <input type="hidden" name="nextPath" value="/" />
+                        <button
+                          type="submit"
+                          className="rounded-sm border border-cyan-300/40 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-300/10"
+                        >
+                          guardar
+                        </button>
+                      </form>
+                    );
+                  })()}
                 </div>
               </li>
             ))}

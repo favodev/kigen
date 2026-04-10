@@ -1,8 +1,17 @@
 import Link from "next/link";
 
+import { removeFromLibrary } from "@/app/library/actions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export default async function LibraryPage() {
+type LibraryPageProps = {
+  searchParams?: Promise<{
+    setup?: string;
+    library?: string;
+  }>;
+};
+
+export default async function LibraryPage({ searchParams }: LibraryPageProps) {
+  const params = (await searchParams) ?? {};
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -39,6 +48,15 @@ export default async function LibraryPage() {
     );
   }
 
+  const { data: entries, error } = await supabase
+    .from("user_media_list")
+    .select("id, title, subtitle, image_url, score, media_kind, status, source, created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  const setupRequired = error?.code === "42P01" || params.setup === "required";
+
   return (
     <main className="p-6">
       <section className="obsidian-card max-w-3xl rounded-sm p-6">
@@ -46,10 +64,83 @@ export default async function LibraryPage() {
         <h1 className="mt-2 font-headline text-3xl font-black tracking-tight text-white">
           Bienvenido, {user.email}
         </h1>
-        <p className="mt-3 text-sm leading-6 text-slate-300">
-          Esta pantalla queda lista para conectar el CRUD de `user_media_list` en el siguiente
-          bloque de trabajo.
-        </p>
+
+        {setupRequired ? (
+          <div className="mt-5 rounded-sm border border-amber-300/30 bg-amber-300/5 p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-amber-300">
+              Database setup required
+            </p>
+            <p className="mt-2 text-sm text-slate-300">
+              Falta aplicar la migracion para activar la persistencia de biblioteca.
+            </p>
+            <p className="mt-2 text-xs text-slate-400">
+              supabase/migrations/20260410122000_create_user_media_list.sql
+            </p>
+          </div>
+        ) : null}
+
+        {params.library === "remove-failed" ? (
+          <div className="mt-5 rounded-sm border border-rose-300/30 bg-rose-300/5 p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-rose-300">
+              Remove failed
+            </p>
+            <p className="mt-2 text-sm text-slate-300">
+              No se pudo quitar el item ahora. Reintenta en unos segundos.
+            </p>
+          </div>
+        ) : null}
+
+        {!setupRequired && (entries?.length ?? 0) === 0 ? (
+          <p className="mt-4 text-sm leading-6 text-slate-300">
+            Tu biblioteca esta vacia. Desde el dashboard ya podes guardar anime y manga en un click.
+          </p>
+        ) : null}
+
+        {!setupRequired && (entries?.length ?? 0) > 0 ? (
+          <ul className="mt-6 space-y-3">
+            {(entries ?? []).map((entry) => (
+              <li
+                key={entry.id}
+                className="flex gap-3 rounded-sm border border-white/10 bg-black/30 p-3"
+              >
+                <div className="h-20 w-14 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900">
+                  {entry.image_url ? (
+                    <img
+                      src={entry.image_url}
+                      alt={entry.title}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-linear-to-br from-cyan-300/20 to-indigo-500/20" />
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold text-white">{entry.title}</p>
+                  <p className="mt-1 text-xs uppercase tracking-wider text-slate-400">
+                    {entry.media_kind} - {entry.status} - {entry.source}
+                  </p>
+                  {entry.subtitle ? <p className="mt-1 text-xs text-slate-400">{entry.subtitle}</p> : null}
+                  <p className="mt-2 text-xs text-slate-500">
+                    {entry.score ? `${entry.score}/10` : "sin score"}
+                  </p>
+                </div>
+
+                <div className="shrink-0 self-center">
+                  <form action={removeFromLibrary}>
+                    <input type="hidden" name="entryId" value={entry.id} />
+                    <button
+                      type="submit"
+                      className="rounded-sm border border-rose-300/40 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-rose-300 transition-colors hover:bg-rose-300/10"
+                    >
+                      quitar
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </section>
     </main>
   );
