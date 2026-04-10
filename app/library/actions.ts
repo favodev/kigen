@@ -188,6 +188,7 @@ export async function updateLibraryEntry(formData: FormData) {
   const nextPath = nextPathFromFormData(formData, "/library");
   const status = parseStatus(String(formData.get("status") ?? "PLAN"));
   const progress = parseProgress(String(formData.get("progress") ?? "0"));
+  const hasNotesField = formData.has("notes");
   const notesRaw = String(formData.get("notes") ?? "").trim();
   const notes = notesRaw.length > 0 ? notesRaw : null;
 
@@ -204,13 +205,22 @@ export async function updateLibraryEntry(formData: FormData) {
     redirect(`/login?next=${encodeURIComponent(nextPath)}`);
   }
 
+  const updatePayload: {
+    status: LibraryStatus;
+    progress: number;
+    notes?: string | null;
+  } = {
+    status,
+    progress,
+  };
+
+  if (hasNotesField) {
+    updatePayload.notes = notes;
+  }
+
   const { error } = await supabase
     .from("user_media_list")
-    .update({
-      status,
-      progress,
-      notes,
-    })
+    .update(updatePayload)
     .eq("id", entryId)
     .eq("user_id", user.id);
 

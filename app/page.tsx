@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { addToLibrary } from "@/app/library/actions";
+import { addToLibrary, removeFromLibrary, updateLibraryEntry } from "@/app/library/actions";
 import { AppShell } from "@/components/shell/app-shell";
 import { getTrendingAnime } from "@/lib/apis/anilist";
 import { getTodayReleases } from "@/lib/apis/jikan";
@@ -33,6 +33,12 @@ type HomePageProps = {
   }>;
 };
 
+type DashboardLibraryEntry = {
+  id: string;
+  status: string;
+  progress: number;
+};
+
 function toLibraryKey(source: string, externalId: string | number): string {
   return `${source}:${String(externalId)}`;
 }
@@ -62,25 +68,45 @@ async function loadLibrarySnapshot() {
   if (!user) {
     return {
       isAuthenticated: false,
+      setupRequired: false,
       savedKeys: new Set<string>(),
+      entriesByKey: new Map<string, DashboardLibraryEntry>(),
     };
   }
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("user_media_list")
-    .select("source, external_id")
+    .select("id, source, external_id, status, progress")
     .eq("user_id", user.id)
     .limit(500);
 
+  if (error?.code === "42P01") {
+    return {
+      isAuthenticated: true,
+      setupRequired: true,
+      savedKeys: new Set<string>(),
+      entriesByKey: new Map<string, DashboardLibraryEntry>(),
+    };
+  }
+
   const savedKeys = new Set<string>();
+  const entriesByKey = new Map<string, DashboardLibraryEntry>();
 
   (data ?? []).forEach((item) => {
-    savedKeys.add(toLibraryKey(item.source, item.external_id));
+    const key = toLibraryKey(item.source, item.external_id);
+    savedKeys.add(key);
+    entriesByKey.set(key, {
+      id: item.id,
+      status: item.status,
+      progress: item.progress,
+    });
   });
 
   return {
     isAuthenticated: true,
+    setupRequired: false,
     savedKeys,
+    entriesByKey,
   };
 }
 
@@ -303,7 +329,7 @@ export default async function Home({ searchParams }: HomePageProps) {
         ) : null}
       </section>
 
-      {params.library === "setup-required" ? (
+      {params.library === "setup-required" || library.setupRequired ? (
         <section className="mt-6">
           <article className="obsidian-card rounded-sm border border-amber-300/30 bg-amber-300/5 p-4">
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-300">
@@ -327,6 +353,32 @@ export default async function Home({ searchParams }: HomePageProps) {
             </p>
             <p className="mt-2 text-sm text-slate-300">
               No se pudo guardar este item ahora. Reintenta en unos segundos.
+            </p>
+          </article>
+        </section>
+      ) : null}
+
+      {params.library === "update-failed" ? (
+        <section className="mt-6">
+          <article className="obsidian-card rounded-sm border border-rose-300/30 bg-rose-300/5 p-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-rose-300">
+              Library Update Failed
+            </p>
+            <p className="mt-2 text-sm text-slate-300">
+              No se pudo actualizar este item ahora. Reintenta en unos segundos.
+            </p>
+          </article>
+        </section>
+      ) : null}
+
+      {params.library === "remove-failed" ? (
+        <section className="mt-6">
+          <article className="obsidian-card rounded-sm border border-rose-300/30 bg-rose-300/5 p-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-rose-300">
+              Library Remove Failed
+            </p>
+            <p className="mt-2 text-sm text-slate-300">
+              No se pudo quitar este item ahora. Reintenta en unos segundos.
             </p>
           </article>
         </section>
@@ -432,13 +484,67 @@ export default async function Home({ searchParams }: HomePageProps) {
                 <div className="shrink-0 self-center">
                   {(() => {
                     const canSave = item.source !== "Fallback";
-                    const isSaved = library.savedKeys.has(toLibraryKey(item.source, item.id));
+                    const key = toLibraryKey(item.source, item.id);
+                    const isSaved = library.savedKeys.has(key);
+                    const entry = library.entriesByKey.get(key);
 
                     if (!canSave) {
                       return (
                         <span className="rounded-sm border border-white/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
                           offline
                         </span>
+                      );
+                    }
+
+                    if (isSaved && entry && library.isAuthenticated) {
+                      return (
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">
+                            {entry.status} / {entry.progress}
+                          </p>
+
+                          <form action={updateLibraryEntry} className="flex flex-col gap-1">
+                            <input type="hidden" name="entryId" value={entry.id} />
+                            <input type="hidden" name="nextPath" value="/" />
+                            <select
+                              name="status"
+                              defaultValue={entry.status}
+                              className="rounded-sm border border-white/15 bg-black/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-200"
+                            >
+                              <option value="PLAN">Plan</option>
+                              <option value="WATCHING">Watching</option>
+                              <option value="READING">Reading</option>
+                              <option value="COMPLETED">Completed</option>
+                              <option value="PAUSED">Paused</option>
+                              <option value="DROPPED">Dropped</option>
+                            </select>
+                            <input
+                              type="number"
+                              name="progress"
+                              min={0}
+                              defaultValue={entry.progress}
+                              className="rounded-sm border border-white/15 bg-black/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-200"
+                              placeholder="Progress"
+                            />
+                            <button
+                              type="submit"
+                              className="rounded-sm border border-cyan-300/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-300/10"
+                            >
+                              guardar
+                            </button>
+                          </form>
+
+                          <form action={removeFromLibrary}>
+                            <input type="hidden" name="entryId" value={entry.id} />
+                            <input type="hidden" name="nextPath" value="/" />
+                            <button
+                              type="submit"
+                              className="rounded-sm border border-rose-300/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-rose-300 transition-colors hover:bg-rose-300/10"
+                            >
+                              quitar
+                            </button>
+                          </form>
+                        </div>
                       );
                     }
 
@@ -549,13 +655,67 @@ export default async function Home({ searchParams }: HomePageProps) {
                 <div className="shrink-0 self-center">
                   {(() => {
                     const canSave = item.source !== "Fallback";
-                    const isSaved = library.savedKeys.has(toLibraryKey(item.source, item.id));
+                    const key = toLibraryKey(item.source, item.id);
+                    const isSaved = library.savedKeys.has(key);
+                    const entry = library.entriesByKey.get(key);
 
                     if (!canSave) {
                       return (
                         <span className="rounded-sm border border-white/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
                           offline
                         </span>
+                      );
+                    }
+
+                    if (isSaved && entry && library.isAuthenticated) {
+                      return (
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">
+                            {entry.status} / {entry.progress}
+                          </p>
+
+                          <form action={updateLibraryEntry} className="flex flex-col gap-1">
+                            <input type="hidden" name="entryId" value={entry.id} />
+                            <input type="hidden" name="nextPath" value="/" />
+                            <select
+                              name="status"
+                              defaultValue={entry.status}
+                              className="rounded-sm border border-white/15 bg-black/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-200"
+                            >
+                              <option value="PLAN">Plan</option>
+                              <option value="WATCHING">Watching</option>
+                              <option value="READING">Reading</option>
+                              <option value="COMPLETED">Completed</option>
+                              <option value="PAUSED">Paused</option>
+                              <option value="DROPPED">Dropped</option>
+                            </select>
+                            <input
+                              type="number"
+                              name="progress"
+                              min={0}
+                              defaultValue={entry.progress}
+                              className="rounded-sm border border-white/15 bg-black/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-200"
+                              placeholder="Progress"
+                            />
+                            <button
+                              type="submit"
+                              className="rounded-sm border border-cyan-300/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-300/10"
+                            >
+                              guardar
+                            </button>
+                          </form>
+
+                          <form action={removeFromLibrary}>
+                            <input type="hidden" name="entryId" value={entry.id} />
+                            <input type="hidden" name="nextPath" value="/" />
+                            <button
+                              type="submit"
+                              className="rounded-sm border border-rose-300/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-rose-300 transition-colors hover:bg-rose-300/10"
+                            >
+                              quitar
+                            </button>
+                          </form>
+                        </div>
                       );
                     }
 
