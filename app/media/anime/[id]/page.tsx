@@ -241,6 +241,66 @@ export default async function AnimeDetailPage({ params, searchParams }: AnimeDet
                 </form>
               </div>
             ) : null}
+
+            <div className="mt-8 grid gap-4 lg:grid-cols-2">
+              <section className="rounded-sm border border-white/10 bg-black/25 p-4">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300/80">Cast</p>
+                {anime.characters.length === 0 ? (
+                  <p className="mt-2 text-xs text-slate-400">Sin datos de personajes por ahora.</p>
+                ) : (
+                  <ul className="mt-3 space-y-2">
+                    {anime.characters.map((character) => (
+                      <li key={character.id} className="flex gap-2 rounded-sm border border-white/10 bg-black/30 p-2">
+                        <div className="h-12 w-10 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900">
+                          {character.imageUrl ? (
+                            <img
+                              src={character.imageUrl}
+                              alt={character.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-full w-full bg-linear-to-br from-cyan-300/20 to-indigo-500/20" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-white">{character.name}</p>
+                          <p className="mt-1 text-[11px] uppercase tracking-wider text-slate-400">
+                            {character.role ?? "role unknown"}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              <section className="rounded-sm border border-white/10 bg-black/25 p-4">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300/80">Staff</p>
+                {anime.staff.length === 0 ? (
+                  <p className="mt-2 text-xs text-slate-400">Sin datos de staff por ahora.</p>
+                ) : (
+                  <ul className="mt-3 space-y-2">
+                    {anime.staff.map((member) => (
+                      <li key={member.id} className="flex gap-2 rounded-sm border border-white/10 bg-black/30 p-2">
+                        <div className="h-12 w-10 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900">
+                          {member.imageUrl ? (
+                            <img src={member.imageUrl} alt={member.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="h-full w-full bg-linear-to-br from-violet-300/20 to-cyan-500/20" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-white">{member.name}</p>
+                          <p className="mt-1 text-[11px] uppercase tracking-wider text-slate-400">
+                            {member.role ?? "role unknown"}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </div>
           </div>
         </div>
       </section>

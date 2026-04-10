@@ -22,6 +22,18 @@ export type AnimeDetail = {
   status: string | null;
   seasonYear: number | null;
   genres: string[];
+  characters: Array<{
+    id: number;
+    name: string;
+    role: string | null;
+    imageUrl: string | null;
+  }>;
+  staff: Array<{
+    id: number;
+    name: string;
+    role: string | null;
+    imageUrl: string | null;
+  }>;
   source: "AniList";
 };
 
@@ -64,6 +76,34 @@ type AniListResponse = {
       status?: string | null;
       seasonYear?: number | null;
       genres?: string[];
+      characters?: {
+        edges?: Array<{
+          role?: string | null;
+          node?: {
+            id: number;
+            name?: {
+              full?: string | null;
+            };
+            image?: {
+              medium?: string | null;
+            };
+          };
+        }>;
+      };
+      staff?: {
+        edges?: Array<{
+          role?: string | null;
+          node?: {
+            id: number;
+            name?: {
+              full?: string | null;
+            };
+            image?: {
+              medium?: string | null;
+            };
+          };
+        }>;
+      };
     };
   };
   errors?: Array<{ message: string }>;
@@ -113,6 +153,34 @@ const ANIME_DETAIL_QUERY = `
       status
       seasonYear
       genres
+      characters(perPage: 8, sort: [ROLE, RELEVANCE, ID]) {
+        edges {
+          role
+          node {
+            id
+            name {
+              full
+            }
+            image {
+              medium
+            }
+          }
+        }
+      }
+      staff(perPage: 8, sort: [RELEVANCE, ID]) {
+        edges {
+          role
+          node {
+            id
+            name {
+              full
+            }
+            image {
+              medium
+            }
+          }
+        }
+      }
     }
   }
 `;
@@ -230,6 +298,22 @@ export async function getAnimeById(id: number): Promise<AnimeDetail | null> {
     status: media.status ? normalizeStatus(media.status) : null,
     seasonYear: media.seasonYear ?? null,
     genres: media.genres ?? [],
+    characters: (media.characters?.edges ?? [])
+      .filter((edge) => edge.node?.id && edge.node.name?.full)
+      .map((edge) => ({
+        id: edge.node!.id,
+        name: edge.node!.name!.full!,
+        role: edge.role ?? null,
+        imageUrl: edge.node?.image?.medium ?? null,
+      })),
+    staff: (media.staff?.edges ?? [])
+      .filter((edge) => edge.node?.id && edge.node.name?.full)
+      .map((edge) => ({
+        id: edge.node!.id,
+        name: edge.node!.name!.full!,
+        role: edge.role ?? null,
+        imageUrl: edge.node?.image?.medium ?? null,
+      })),
     source: "AniList",
   };
 }
