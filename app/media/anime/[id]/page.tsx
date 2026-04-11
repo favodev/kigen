@@ -16,6 +16,28 @@ type AnimeDetailPageProps = {
   }>;
 };
 
+function recommendationReason(item: {
+  rating: number | null;
+  genres: string[];
+  status: string | null;
+}, baseGenres: string[]): string {
+  const overlap = item.genres.filter((genre) => baseGenres.includes(genre));
+
+  if (overlap.length > 0) {
+    return `afinidad por genero: ${overlap.slice(0, 2).join(" / ")}`;
+  }
+
+  if (typeof item.rating === "number" && item.rating >= 80) {
+    return "afinidad alta por recomendacion comunitaria";
+  }
+
+  if (item.status === "releasing") {
+    return "afinidad por tendencia en emision";
+  }
+
+  return "afinidad editorial basada en catalogo";
+}
+
 export default async function AnimeDetailPage({ params, searchParams }: AnimeDetailPageProps) {
   const { id } = await params;
   const pageParams = (await searchParams) ?? {};
@@ -467,6 +489,9 @@ export default async function AnimeDetailPage({ params, searchParams }: AnimeDet
                           <p className="mt-1 text-[11px] uppercase tracking-wider text-slate-400">
                             {item.score ? `${item.score}/10` : "sin score"} - {item.format ?? "unknown"} - {item.status ?? "unknown"}
                           </p>
+                          <p className="mt-1 text-[11px] uppercase tracking-wider text-cyan-300/80">
+                            {recommendationReason(item, anime.genres)}
+                          </p>
                         </div>
                         <div className="shrink-0 self-center">
                           {(() => {
@@ -557,17 +582,92 @@ export default async function AnimeDetailPage({ params, searchParams }: AnimeDet
                   {continuity.map((item, index) => (
                     <li
                       key={`${item.id}-${item.relationType ?? "continuity"}-${index}`}
-                      className="rounded-sm border border-white/10 bg-black/30 p-3"
+                      className="flex items-start justify-between gap-3 rounded-sm border border-white/10 bg-black/30 p-3"
                     >
-                      <Link
-                        href={`/media/anime/${item.id}`}
-                        className="text-sm font-semibold text-white transition-colors hover:text-cyan-300"
-                      >
-                        {item.title}
-                      </Link>
-                      <p className="mt-1 text-[11px] uppercase tracking-wider text-slate-400">
-                        {item.relationType ?? "related"} - {item.format ?? "unknown"} - {item.status ?? "unknown"}
-                      </p>
+                      <div className="min-w-0 flex-1">
+                        <Link
+                          href={`/media/anime/${item.id}`}
+                          className="text-sm font-semibold text-white transition-colors hover:text-cyan-300"
+                        >
+                          {item.title}
+                        </Link>
+                        <p className="mt-1 text-[11px] uppercase tracking-wider text-slate-400">
+                          {item.relationType ?? "related"} - {item.format ?? "unknown"} - {item.status ?? "unknown"}
+                        </p>
+                      </div>
+                      <div className="shrink-0 self-center">
+                        {(() => {
+                          const existing = relatedLibraryMap.get(String(item.id));
+
+                          if (existing) {
+                            return (
+                              <form action={updateLibraryEntry} className="space-y-1 text-right">
+                                <input type="hidden" name="entryId" value={existing.id} />
+                                <input type="hidden" name="nextPath" value={nextPath} />
+                                <select
+                                  name="status"
+                                  defaultValue={existing.status}
+                                  className="rounded-sm border border-white/15 bg-black/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-200"
+                                >
+                                  <option value="PLAN">Plan</option>
+                                  <option value="WATCHING">Watching</option>
+                                  <option value="READING">Reading</option>
+                                  <option value="COMPLETED">Completed</option>
+                                  <option value="PAUSED">Paused</option>
+                                  <option value="DROPPED">Dropped</option>
+                                </select>
+                                <input
+                                  type="number"
+                                  name="progress"
+                                  min={0}
+                                  defaultValue={existing.progress}
+                                  className="w-20 rounded-sm border border-white/15 bg-black/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-200"
+                                />
+                                <button
+                                  type="submit"
+                                  className="rounded-sm border border-emerald-300/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-300 transition-colors hover:bg-emerald-300/10"
+                                >
+                                  actualizar
+                                </button>
+                              </form>
+                            );
+                          }
+
+                          if (!user) {
+                            return (
+                              <Link
+                                href={`/login?next=${encodeURIComponent(nextPath)}`}
+                                className="rounded-sm border border-cyan-300/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-300/10"
+                              >
+                                login
+                              </Link>
+                            );
+                          }
+
+                          return (
+                            <form action={addToLibrary}>
+                              <input type="hidden" name="externalId" value={String(item.id)} />
+                              <input type="hidden" name="title" value={item.title} />
+                              <input
+                                type="hidden"
+                                name="subtitle"
+                                value={`${item.format ?? "Unknown"} - ${item.status ?? "unknown"}`}
+                              />
+                              <input type="hidden" name="imageUrl" value={item.imageUrl ?? ""} />
+                              <input type="hidden" name="score" value="" />
+                              <input type="hidden" name="source" value="AniList" />
+                              <input type="hidden" name="mediaKind" value="ANIME" />
+                              <input type="hidden" name="nextPath" value={nextPath} />
+                              <button
+                                type="submit"
+                                className="rounded-sm border border-cyan-300/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-300/10"
+                              >
+                                guardar
+                              </button>
+                            </form>
+                          );
+                        })()}
+                      </div>
                     </li>
                   ))}
                 </ul>

@@ -52,6 +52,7 @@ export type AnimeDetail = {
     status: string | null;
     seasonYear: number | null;
     rating: number | null;
+    genres: string[];
   }>;
   source: "AniList";
 };
@@ -159,6 +160,7 @@ type AniListResponse = {
             format?: string | null;
             status?: string | null;
             seasonYear?: number | null;
+            genres?: string[] | null;
           };
         }>;
       };
@@ -275,6 +277,7 @@ const ANIME_DETAIL_QUERY = `
             format
             status
             seasonYear
+            genres
           }
         }
       }
@@ -440,6 +443,7 @@ export async function getAnimeById(id: number): Promise<AnimeDetail | null> {
           status: rec.status ? normalizeStatus(rec.status) : null,
           seasonYear: rec.seasonYear ?? null,
           rating: typeof node.rating === "number" ? node.rating : null,
+          genres: rec.genres ?? [],
         };
       }),
     source: "AniList",
