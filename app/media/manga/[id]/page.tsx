@@ -38,6 +38,7 @@ export default async function MangaDetailPage({ params, searchParams }: MangaDet
     progress: number;
     notes: string | null;
   } | null = null;
+  const relatedLibraryMap = new Map<string, { id: string; status: string; progress: number }>();
 
   if (user && !setupRequired) {
     const { data, error } = await supabase
@@ -52,6 +53,30 @@ export default async function MangaDetailPage({ params, searchParams }: MangaDet
       setupRequired = true;
     } else {
       libraryEntry = data;
+
+      const relatedIds = Array.from(
+        new Set([
+          ...manga.related.map((item) => String(item.id)),
+          ...manga.recommendations.map((item) => String(item.id)),
+        ]),
+      );
+
+      if (relatedIds.length > 0) {
+        const { data: relatedData } = await supabase
+          .from("user_media_list")
+          .select("id, external_id, status, progress")
+          .eq("user_id", user.id)
+          .eq("source", "Kitsu")
+          .in("external_id", relatedIds);
+
+        (relatedData ?? []).forEach((entry) => {
+          relatedLibraryMap.set(String(entry.external_id), {
+            id: entry.id,
+            status: entry.status,
+            progress: entry.progress,
+          });
+        });
+      }
     }
   }
 
@@ -252,6 +277,58 @@ export default async function MangaDetailPage({ params, searchParams }: MangaDet
                             {item.subtype ?? "manga"} - {item.status ?? "unknown"}
                           </p>
                         </div>
+                        <div className="shrink-0 self-center">
+                          {(() => {
+                            const existing = relatedLibraryMap.get(String(item.id));
+
+                            if (existing) {
+                              return (
+                                <div className="text-right">
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">
+                                    {existing.status} / {existing.progress}
+                                  </p>
+                                  <span className="text-[10px] uppercase tracking-widest text-slate-400">
+                                    en biblioteca
+                                  </span>
+                                </div>
+                              );
+                            }
+
+                            if (!user) {
+                              return (
+                                <Link
+                                  href={`/login?next=${encodeURIComponent(nextPath)}`}
+                                  className="rounded-sm border border-cyan-300/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-300/10"
+                                >
+                                  login
+                                </Link>
+                              );
+                            }
+
+                            return (
+                              <form action={addToLibrary}>
+                                <input type="hidden" name="externalId" value={item.id} />
+                                <input type="hidden" name="title" value={item.title} />
+                                <input
+                                  type="hidden"
+                                  name="subtitle"
+                                  value={`${item.subtype ?? "manga"} - ${item.status ?? "unknown"}`}
+                                />
+                                <input type="hidden" name="imageUrl" value={item.imageUrl ?? ""} />
+                                <input type="hidden" name="score" value={item.score ?? ""} />
+                                <input type="hidden" name="source" value="Kitsu" />
+                                <input type="hidden" name="mediaKind" value="MANGA" />
+                                <input type="hidden" name="nextPath" value={nextPath} />
+                                <button
+                                  type="submit"
+                                  className="rounded-sm border border-cyan-300/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-300/10"
+                                >
+                                  guardar
+                                </button>
+                              </form>
+                            );
+                          })()}
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -283,6 +360,58 @@ export default async function MangaDetailPage({ params, searchParams }: MangaDet
                           <p className="mt-1 text-[11px] uppercase tracking-wider text-slate-400">
                             {item.score ? `${item.score}/10` : "sin score"} - {item.status ?? "unknown"}
                           </p>
+                        </div>
+                        <div className="shrink-0 self-center">
+                          {(() => {
+                            const existing = relatedLibraryMap.get(String(item.id));
+
+                            if (existing) {
+                              return (
+                                <div className="text-right">
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">
+                                    {existing.status} / {existing.progress}
+                                  </p>
+                                  <span className="text-[10px] uppercase tracking-widest text-slate-400">
+                                    en biblioteca
+                                  </span>
+                                </div>
+                              );
+                            }
+
+                            if (!user) {
+                              return (
+                                <Link
+                                  href={`/login?next=${encodeURIComponent(nextPath)}`}
+                                  className="rounded-sm border border-cyan-300/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-300/10"
+                                >
+                                  login
+                                </Link>
+                              );
+                            }
+
+                            return (
+                              <form action={addToLibrary}>
+                                <input type="hidden" name="externalId" value={item.id} />
+                                <input type="hidden" name="title" value={item.title} />
+                                <input
+                                  type="hidden"
+                                  name="subtitle"
+                                  value={`${item.subtype ?? "manga"} - ${item.status ?? "unknown"}`}
+                                />
+                                <input type="hidden" name="imageUrl" value={item.imageUrl ?? ""} />
+                                <input type="hidden" name="score" value={item.score ?? ""} />
+                                <input type="hidden" name="source" value="Kitsu" />
+                                <input type="hidden" name="mediaKind" value="MANGA" />
+                                <input type="hidden" name="nextPath" value={nextPath} />
+                                <button
+                                  type="submit"
+                                  className="rounded-sm border border-cyan-300/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-300/10"
+                                >
+                                  guardar
+                                </button>
+                              </form>
+                            );
+                          })()}
                         </div>
                       </li>
                     ))}
