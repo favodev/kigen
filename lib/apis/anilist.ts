@@ -34,6 +34,25 @@ export type AnimeDetail = {
     role: string | null;
     imageUrl: string | null;
   }>;
+  related: Array<{
+    id: number;
+    title: string;
+    relationType: string | null;
+    imageUrl: string | null;
+    format: string | null;
+    status: string | null;
+    seasonYear: number | null;
+  }>;
+  recommendations: Array<{
+    id: number;
+    title: string;
+    imageUrl: string | null;
+    score: number | null;
+    format: string | null;
+    status: string | null;
+    seasonYear: number | null;
+    rating: number | null;
+  }>;
   source: "AniList";
 };
 
@@ -101,6 +120,45 @@ type AniListResponse = {
             image?: {
               medium?: string | null;
             };
+          };
+        }>;
+      };
+      relations?: {
+        edges?: Array<{
+          relationType?: string | null;
+          node?: {
+            id: number;
+            title?: {
+              romaji?: string | null;
+              english?: string | null;
+            };
+            coverImage?: {
+              large?: string | null;
+              medium?: string | null;
+            };
+            format?: string | null;
+            status?: string | null;
+            seasonYear?: number | null;
+          };
+        }>;
+      };
+      recommendations?: {
+        nodes?: Array<{
+          rating?: number | null;
+          mediaRecommendation?: {
+            id: number;
+            title?: {
+              romaji?: string | null;
+              english?: string | null;
+            };
+            coverImage?: {
+              large?: string | null;
+              medium?: string | null;
+            };
+            averageScore?: number | null;
+            format?: string | null;
+            status?: string | null;
+            seasonYear?: number | null;
           };
         }>;
       };
@@ -178,6 +236,45 @@ const ANIME_DETAIL_QUERY = `
             image {
               medium
             }
+          }
+        }
+      }
+      relations {
+        edges {
+          relationType
+          node {
+            id
+            title {
+              romaji
+              english
+            }
+            coverImage {
+              large
+              medium
+            }
+            format
+            status
+            seasonYear
+          }
+        }
+      }
+      recommendations(sort: [RATING_DESC], perPage: 8) {
+        nodes {
+          rating
+          mediaRecommendation {
+            id
+            title {
+              romaji
+              english
+            }
+            coverImage {
+              large
+              medium
+            }
+            averageScore
+            format
+            status
+            seasonYear
           }
         }
       }
@@ -314,6 +411,37 @@ export async function getAnimeById(id: number): Promise<AnimeDetail | null> {
         role: edge.role ?? null,
         imageUrl: edge.node?.image?.medium ?? null,
       })),
+    related: (media.relations?.edges ?? [])
+      .filter((edge) => edge.node?.id && (edge.node.title?.english || edge.node.title?.romaji))
+      .map((edge) => ({
+        id: edge.node!.id,
+        title: edge.node!.title?.english || edge.node!.title?.romaji || "Untitled",
+        relationType: edge.relationType ? normalizeStatus(edge.relationType) : null,
+        imageUrl: edge.node?.coverImage?.large || edge.node?.coverImage?.medium || null,
+        format: edge.node?.format ?? null,
+        status: edge.node?.status ? normalizeStatus(edge.node.status) : null,
+        seasonYear: edge.node?.seasonYear ?? null,
+      })),
+    recommendations: (media.recommendations?.nodes ?? [])
+      .filter((node) => node.mediaRecommendation?.id && (node.mediaRecommendation.title?.english || node.mediaRecommendation.title?.romaji))
+      .map((node) => {
+        const rec = node.mediaRecommendation!;
+        const recScore =
+          typeof rec.averageScore === "number"
+            ? Math.round((rec.averageScore / 10) * 10) / 10
+            : null;
+
+        return {
+          id: rec.id,
+          title: rec.title?.english || rec.title?.romaji || "Untitled",
+          imageUrl: rec.coverImage?.large || rec.coverImage?.medium || null,
+          score: recScore,
+          format: rec.format ?? null,
+          status: rec.status ? normalizeStatus(rec.status) : null,
+          seasonYear: rec.seasonYear ?? null,
+          rating: typeof node.rating === "number" ? node.rating : null,
+        };
+      }),
     source: "AniList",
   };
 }
