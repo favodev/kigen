@@ -283,14 +283,35 @@ export default async function MangaDetailPage({ params, searchParams }: MangaDet
 
                             if (existing) {
                               return (
-                                <div className="text-right">
-                                  <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">
-                                    {existing.status} / {existing.progress}
-                                  </p>
-                                  <span className="text-[10px] uppercase tracking-widest text-slate-400">
-                                    en biblioteca
-                                  </span>
-                                </div>
+                                <form action={updateLibraryEntry} className="space-y-1 text-right">
+                                  <input type="hidden" name="entryId" value={existing.id} />
+                                  <input type="hidden" name="nextPath" value={nextPath} />
+                                  <select
+                                    name="status"
+                                    defaultValue={existing.status}
+                                    className="rounded-sm border border-white/15 bg-black/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-200"
+                                  >
+                                    <option value="PLAN">Plan</option>
+                                    <option value="WATCHING">Watching</option>
+                                    <option value="READING">Reading</option>
+                                    <option value="COMPLETED">Completed</option>
+                                    <option value="PAUSED">Paused</option>
+                                    <option value="DROPPED">Dropped</option>
+                                  </select>
+                                  <input
+                                    type="number"
+                                    name="progress"
+                                    min={0}
+                                    defaultValue={existing.progress}
+                                    className="w-20 rounded-sm border border-white/15 bg-black/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-200"
+                                  />
+                                  <button
+                                    type="submit"
+                                    className="rounded-sm border border-emerald-300/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-300 transition-colors hover:bg-emerald-300/10"
+                                  >
+                                    actualizar
+                                  </button>
+                                </form>
                               );
                             }
 
@@ -367,14 +388,35 @@ export default async function MangaDetailPage({ params, searchParams }: MangaDet
 
                             if (existing) {
                               return (
-                                <div className="text-right">
-                                  <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">
-                                    {existing.status} / {existing.progress}
-                                  </p>
-                                  <span className="text-[10px] uppercase tracking-widest text-slate-400">
-                                    en biblioteca
-                                  </span>
-                                </div>
+                                <form action={updateLibraryEntry} className="space-y-1 text-right">
+                                  <input type="hidden" name="entryId" value={existing.id} />
+                                  <input type="hidden" name="nextPath" value={nextPath} />
+                                  <select
+                                    name="status"
+                                    defaultValue={existing.status}
+                                    className="rounded-sm border border-white/15 bg-black/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-200"
+                                  >
+                                    <option value="PLAN">Plan</option>
+                                    <option value="WATCHING">Watching</option>
+                                    <option value="READING">Reading</option>
+                                    <option value="COMPLETED">Completed</option>
+                                    <option value="PAUSED">Paused</option>
+                                    <option value="DROPPED">Dropped</option>
+                                  </select>
+                                  <input
+                                    type="number"
+                                    name="progress"
+                                    min={0}
+                                    defaultValue={existing.progress}
+                                    className="w-20 rounded-sm border border-white/15 bg-black/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-200"
+                                  />
+                                  <button
+                                    type="submit"
+                                    className="rounded-sm border border-emerald-300/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-300 transition-colors hover:bg-emerald-300/10"
+                                  >
+                                    actualizar
+                                  </button>
+                                </form>
                               );
                             }
 

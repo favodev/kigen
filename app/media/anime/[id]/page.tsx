@@ -32,6 +32,9 @@ export default async function AnimeDetailPage({ params, searchParams }: AnimeDet
   }
 
   const nextPath = `/media/anime/${anime.id}`;
+  const continuity = anime.related.filter(
+    (item) => item.relationType === "prequel" || item.relationType === "sequel",
+  );
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -366,14 +369,35 @@ export default async function AnimeDetailPage({ params, searchParams }: AnimeDet
 
                             if (existing) {
                               return (
-                                <div className="text-right">
-                                  <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">
-                                    {existing.status} / {existing.progress}
-                                  </p>
-                                  <span className="text-[10px] uppercase tracking-widest text-slate-400">
-                                    en biblioteca
-                                  </span>
-                                </div>
+                                <form action={updateLibraryEntry} className="space-y-1 text-right">
+                                  <input type="hidden" name="entryId" value={existing.id} />
+                                  <input type="hidden" name="nextPath" value={nextPath} />
+                                  <select
+                                    name="status"
+                                    defaultValue={existing.status}
+                                    className="rounded-sm border border-white/15 bg-black/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-200"
+                                  >
+                                    <option value="PLAN">Plan</option>
+                                    <option value="WATCHING">Watching</option>
+                                    <option value="READING">Reading</option>
+                                    <option value="COMPLETED">Completed</option>
+                                    <option value="PAUSED">Paused</option>
+                                    <option value="DROPPED">Dropped</option>
+                                  </select>
+                                  <input
+                                    type="number"
+                                    name="progress"
+                                    min={0}
+                                    defaultValue={existing.progress}
+                                    className="w-20 rounded-sm border border-white/15 bg-black/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-200"
+                                  />
+                                  <button
+                                    type="submit"
+                                    className="rounded-sm border border-emerald-300/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-300 transition-colors hover:bg-emerald-300/10"
+                                  >
+                                    actualizar
+                                  </button>
+                                </form>
                               );
                             }
 
@@ -450,14 +474,35 @@ export default async function AnimeDetailPage({ params, searchParams }: AnimeDet
 
                             if (existing) {
                               return (
-                                <div className="text-right">
-                                  <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">
-                                    {existing.status} / {existing.progress}
-                                  </p>
-                                  <span className="text-[10px] uppercase tracking-widest text-slate-400">
-                                    en biblioteca
-                                  </span>
-                                </div>
+                                <form action={updateLibraryEntry} className="space-y-1 text-right">
+                                  <input type="hidden" name="entryId" value={existing.id} />
+                                  <input type="hidden" name="nextPath" value={nextPath} />
+                                  <select
+                                    name="status"
+                                    defaultValue={existing.status}
+                                    className="rounded-sm border border-white/15 bg-black/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-200"
+                                  >
+                                    <option value="PLAN">Plan</option>
+                                    <option value="WATCHING">Watching</option>
+                                    <option value="READING">Reading</option>
+                                    <option value="COMPLETED">Completed</option>
+                                    <option value="PAUSED">Paused</option>
+                                    <option value="DROPPED">Dropped</option>
+                                  </select>
+                                  <input
+                                    type="number"
+                                    name="progress"
+                                    min={0}
+                                    defaultValue={existing.progress}
+                                    className="w-20 rounded-sm border border-white/15 bg-black/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-200"
+                                  />
+                                  <button
+                                    type="submit"
+                                    className="rounded-sm border border-emerald-300/40 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-300 transition-colors hover:bg-emerald-300/10"
+                                  >
+                                    actualizar
+                                  </button>
+                                </form>
                               );
                             }
 
@@ -502,6 +547,32 @@ export default async function AnimeDetailPage({ params, searchParams }: AnimeDet
                 )}
               </section>
             </div>
+
+            <section className="mt-4 rounded-sm border border-white/10 bg-black/25 p-4">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300/80">Continuidad</p>
+              {continuity.length === 0 ? (
+                <p className="mt-2 text-xs text-slate-400">No hay prequels/sequels detectados para esta obra.</p>
+              ) : (
+                <ul className="mt-3 grid gap-2 md:grid-cols-2">
+                  {continuity.map((item, index) => (
+                    <li
+                      key={`${item.id}-${item.relationType ?? "continuity"}-${index}`}
+                      className="rounded-sm border border-white/10 bg-black/30 p-3"
+                    >
+                      <Link
+                        href={`/media/anime/${item.id}`}
+                        className="text-sm font-semibold text-white transition-colors hover:text-cyan-300"
+                      >
+                        {item.title}
+                      </Link>
+                      <p className="mt-1 text-[11px] uppercase tracking-wider text-slate-400">
+                        {item.relationType ?? "related"} - {item.format ?? "unknown"} - {item.status ?? "unknown"}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           </div>
         </div>
       </section>
