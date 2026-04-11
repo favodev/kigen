@@ -22,7 +22,32 @@ export type MangaDetail = {
   status: string | null;
   ageRating: string | null;
   startDate: string | null;
+  related: Array<{
+    id: string;
+    title: string;
+    imageUrl: string | null;
+    score: number | null;
+    subtype: string | null;
+    status: string | null;
+  }>;
+  recommendations: Array<{
+    id: string;
+    title: string;
+    imageUrl: string | null;
+    score: number | null;
+    subtype: string | null;
+    status: string | null;
+  }>;
   source: "Kitsu";
+};
+
+type MangaSuggestion = {
+  id: string;
+  title: string;
+  imageUrl: string | null;
+  score: number | null;
+  subtype: string | null;
+  status: string | null;
 };
 
 type KitsuResponse = {
@@ -84,6 +109,75 @@ function normalizeDescription(value: string | null | undefined): string | null {
   return value.trim();
 }
 
+function mapMangaSuggestion(item: {
+  id: string;
+  attributes?: {
+    canonicalTitle?: string | null;
+    averageRating?: string | null;
+    subtype?: string | null;
+    status?: string | null;
+    posterImage?: {
+      large?: string | null;
+      medium?: string | null;
+    };
+  };
+}): MangaSuggestion {
+  const attributes = item.attributes;
+  const scoreRaw = Number(attributes?.averageRating ?? "");
+
+  return {
+    id: item.id,
+    title: attributes?.canonicalTitle || "Untitled manga",
+    imageUrl: attributes?.posterImage?.large || attributes?.posterImage?.medium || null,
+    score: Number.isFinite(scoreRaw) ? Math.round(scoreRaw) / 10 : null,
+    subtype: attributes?.subtype ? normalizeText(attributes.subtype) : null,
+    status: attributes?.status ? normalizeText(attributes.status) : null,
+  };
+}
+
+async function getMangaCompanions(
+  currentId: string,
+  subtypeRaw: string | null | undefined,
+  statusRaw: string | null | undefined,
+): Promise<{ related: MangaSuggestion[]; recommendations: MangaSuggestion[] }> {
+  const filterSubtype = subtypeRaw ? `&filter[subtype]=${encodeURIComponent(subtypeRaw)}` : "";
+  const response = await fetch(
+    `${env.KITSU_API_URL}/manga?page[limit]=20&sort=-averageRating${filterSubtype}`,
+    {
+      headers: {
+        Accept: "application/vnd.api+json",
+      },
+      next: { revalidate: 3600 },
+    },
+  );
+
+  if (!response.ok) {
+    return {
+      related: [],
+      recommendations: [],
+    };
+  }
+
+  const json = (await response.json()) as KitsuResponse;
+  const normalizedStatus = statusRaw ? normalizeText(statusRaw) : null;
+  const candidates = (json.data ?? [])
+    .map(mapMangaSuggestion)
+    .filter((item) => item.id !== currentId);
+
+  const recommendations = candidates.slice(0, 6);
+  const relatedByStatus = normalizedStatus
+    ? candidates.filter((item) => item.status === normalizedStatus)
+    : [];
+
+  const relatedSeed = relatedByStatus.length > 0 ? relatedByStatus : candidates;
+  const related = relatedSeed.slice(0, 6);
+
+  return {
+    related,
+    recommendations,
+  };
+}
+
 export async function getTrendingManga(limit = 6): Promise<MangaFeedItem[]> {
   const response = await fetch(
     `${env.KITSU_API_URL}/manga?page[limit]=${limit}&sort=-averageRating`,
@@ -142,6 +236,7 @@ export async function getMangaById(id: string): Promise<MangaDetail | null> {
 
   const attributes = item.attributes;
   const scoreRaw = Number(attributes?.averageRating ?? "");
+  const companions = await getMangaCompanions(item.id, attributes?.subtype, attributes?.status);
 
   return {
     id: item.id,
@@ -160,6 +255,8 @@ export async function getMangaById(id: string): Promise<MangaDetail | null> {
     status: attributes?.status ? normalizeText(attributes.status) : null,
     ageRating: attributes?.ageRating ?? null,
     startDate: attributes?.startDate ?? null,
+    related: companions.related,
+    recommendations: companions.recommendations,
     source: "Kitsu",
   };
 }

@@ -224,6 +224,72 @@ export default async function MangaDetailPage({ params, searchParams }: MangaDet
                 </form>
               </div>
             ) : null}
+
+            <div className="mt-8 grid gap-4 lg:grid-cols-2">
+              <section className="rounded-sm border border-white/10 bg-black/25 p-4">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300/80">Related Picks</p>
+                {manga.related.length === 0 ? (
+                  <p className="mt-2 text-xs text-slate-400">Sin picks relacionados por ahora.</p>
+                ) : (
+                  <ul className="mt-3 space-y-2">
+                    {manga.related.map((item, index) => (
+                      <li
+                        key={`${item.id}-${item.status ?? "related"}-${index}`}
+                        className="flex gap-2 rounded-sm border border-white/10 bg-black/30 p-2"
+                      >
+                        <div className="h-12 w-10 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900">
+                          {item.imageUrl ? (
+                            <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="h-full w-full bg-linear-to-br from-violet-300/20 to-cyan-500/20" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <Link href={`/media/manga/${item.id}`} className="truncate text-sm font-semibold text-white hover:text-cyan-300">
+                            {item.title}
+                          </Link>
+                          <p className="mt-1 text-[11px] uppercase tracking-wider text-slate-400">
+                            {item.subtype ?? "manga"} - {item.status ?? "unknown"}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              <section className="rounded-sm border border-white/10 bg-black/25 p-4">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300/80">Recomendaciones</p>
+                {manga.recommendations.length === 0 ? (
+                  <p className="mt-2 text-xs text-slate-400">Sin recomendaciones por ahora.</p>
+                ) : (
+                  <ul className="mt-3 space-y-2">
+                    {manga.recommendations.map((item, index) => (
+                      <li
+                        key={`${item.id}-${item.score ?? 0}-${index}`}
+                        className="flex gap-2 rounded-sm border border-white/10 bg-black/30 p-2"
+                      >
+                        <div className="h-12 w-10 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900">
+                          {item.imageUrl ? (
+                            <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="h-full w-full bg-linear-to-br from-cyan-300/20 to-indigo-500/20" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <Link href={`/media/manga/${item.id}`} className="truncate text-sm font-semibold text-white hover:text-cyan-300">
+                            {item.title}
+                          </Link>
+                          <p className="mt-1 text-[11px] uppercase tracking-wider text-slate-400">
+                            {item.score ? `${item.score}/10` : "sin score"} - {item.status ?? "unknown"}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </div>
           </div>
         </div>
       </section>
