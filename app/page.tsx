@@ -345,6 +345,27 @@ export default async function Home({ searchParams }: HomePageProps) {
         </section>
       ) : null}
 
+      {params.library === "saved" || params.library === "updated" || params.library === "removed" ? (
+        <section className="mt-6">
+          <article className="obsidian-card rounded-sm border border-emerald-300/30 bg-emerald-300/5 p-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-300">
+              {params.library === "saved"
+                ? "Library Saved"
+                : params.library === "updated"
+                  ? "Library Updated"
+                  : "Library Removed"}
+            </p>
+            <p className="mt-2 text-sm text-slate-300">
+              {params.library === "saved"
+                ? "Item guardado correctamente en tu biblioteca."
+                : params.library === "updated"
+                  ? "Cambios de tracking guardados correctamente."
+                  : "Item quitado correctamente de tu biblioteca."}
+            </p>
+          </article>
+        </section>
+      ) : null}
+
       {params.library === "save-failed" ? (
         <section className="mt-6">
           <article className="obsidian-card rounded-sm border border-rose-300/30 bg-rose-300/5 p-4">

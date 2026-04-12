@@ -90,6 +90,25 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
           </div>
         ) : null}
 
+        {params.library === "saved" || params.library === "updated" || params.library === "removed" ? (
+          <div className="mt-5 rounded-sm border border-emerald-300/30 bg-emerald-300/5 p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+              {params.library === "saved"
+                ? "Saved"
+                : params.library === "updated"
+                  ? "Updated"
+                  : "Removed"}
+            </p>
+            <p className="mt-2 text-sm text-slate-300">
+              {params.library === "saved"
+                ? "Item guardado correctamente en biblioteca."
+                : params.library === "updated"
+                  ? "Tracking actualizado correctamente."
+                  : "Item quitado correctamente de biblioteca."}
+            </p>
+          </div>
+        ) : null}
+
         {params.library === "update-failed" ? (
           <div className="mt-5 rounded-sm border border-rose-300/30 bg-rose-300/5 p-4">
             <p className="text-xs font-bold uppercase tracking-wider text-rose-300">

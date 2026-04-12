@@ -166,6 +166,25 @@ export default async function AnimeDetailPage({ params, searchParams }: AnimeDet
           </div>
         ) : null}
 
+        {pageParams.library === "saved" || pageParams.library === "updated" || pageParams.library === "removed" ? (
+          <div className="mt-4 rounded-sm border border-emerald-300/30 bg-emerald-300/5 p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+              {pageParams.library === "saved"
+                ? "Saved"
+                : pageParams.library === "updated"
+                  ? "Updated"
+                  : "Removed"}
+            </p>
+            <p className="mt-2 text-sm text-slate-300">
+              {pageParams.library === "saved"
+                ? "Item guardado correctamente en biblioteca."
+                : pageParams.library === "updated"
+                  ? "Tracking actualizado correctamente."
+                  : "Item quitado correctamente de biblioteca."}
+            </p>
+          </div>
+        ) : null}
+
         <div className="mt-4 grid items-start gap-5 md:grid-cols-[220px_1fr]">
           <div className="aspect-2/3 w-full self-start overflow-hidden rounded-sm border border-white/10 bg-slate-900">
             {anime.imageUrl ? (

@@ -51,6 +51,19 @@ function sanitizePath(path: string): string {
   return path;
 }
 
+function withQueryParam(path: string, key: string, value: string): string {
+  const [pathname, queryString = ""] = path.split("?");
+  const params = new URLSearchParams(queryString);
+  params.set(key, value);
+  const nextQuery = params.toString();
+
+  if (!nextQuery) {
+    return pathname;
+  }
+
+  return `${pathname}?${nextQuery}`;
+}
+
 function nextPathFromFormData(formData: FormData, fallback: string): string {
   const raw = String(formData.get("nextPath") ?? "").trim();
 
@@ -146,6 +159,7 @@ export async function addToLibrary(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/library");
+  redirect(withQueryParam(input.nextPath, "library", "saved"));
 }
 
 export async function removeFromLibrary(formData: FormData) {
@@ -181,6 +195,7 @@ export async function removeFromLibrary(formData: FormData) {
 
   revalidatePath(nextPath);
   revalidatePath("/library");
+  redirect(withQueryParam(nextPath, "library", "removed"));
 }
 
 export async function updateLibraryEntry(formData: FormData) {
@@ -234,4 +249,5 @@ export async function updateLibraryEntry(formData: FormData) {
 
   revalidatePath(nextPath);
   revalidatePath("/library");
+  redirect(withQueryParam(nextPath, "library", "updated"));
 }
