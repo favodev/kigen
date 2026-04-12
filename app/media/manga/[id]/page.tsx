@@ -16,6 +16,39 @@ type MangaDetailPageProps = {
   }>;
 };
 
+function recommendationReason(item: {
+  score: number | null;
+  subtype: string | null;
+  status: string | null;
+}, baseSubtype: string | null): string {
+  const signals: string[] = [];
+  let points = 16;
+
+  if (baseSubtype && item.subtype && baseSubtype === item.subtype) {
+    points += 34;
+    signals.push(`mismo subtipo: ${item.subtype}`);
+  }
+
+  if (typeof item.score === "number") {
+    const scorePoints = Math.max(0, Math.min(35, Math.round(item.score * 3.2)));
+    points += scorePoints;
+    signals.push(`score comunidad: ${item.score}/10`);
+  }
+
+  if (item.status === "current") {
+    points += 12;
+    signals.push("obra activa");
+  } else if (item.status === "finished") {
+    points += 6;
+  }
+
+  const affinity = Math.min(99, points);
+  const tier = affinity >= 72 ? "alta" : affinity >= 48 ? "media" : "exploratoria";
+  const detail = signals.length > 0 ? signals.join(" · ") : "seleccion editorial";
+
+  return `afinidad ${tier} (${affinity} pts) · ${detail}`;
+}
+
 export default async function MangaDetailPage({ params, searchParams }: MangaDetailPageProps) {
   const { id } = await params;
   const pageParams = (await searchParams) ?? {};
@@ -380,6 +413,9 @@ export default async function MangaDetailPage({ params, searchParams }: MangaDet
                           </Link>
                           <p className="mt-1 text-[11px] uppercase tracking-wider text-slate-400">
                             {item.score ? `${item.score}/10` : "sin score"} - {item.status ?? "unknown"}
+                          </p>
+                          <p className="mt-1 text-[11px] uppercase tracking-wider text-cyan-300/80">
+                            {recommendationReason(item, manga.subtype)}
                           </p>
                         </div>
                         <div className="shrink-0 self-center">

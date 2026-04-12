@@ -21,21 +21,33 @@ function recommendationReason(item: {
   genres: string[];
   status: string | null;
 }, baseGenres: string[]): string {
-  const overlap = item.genres.filter((genre) => baseGenres.includes(genre));
+  const baseGenreSet = new Set(baseGenres.map((genre) => genre.toLowerCase()));
+  const overlap = item.genres.filter((genre) => baseGenreSet.has(genre.toLowerCase()));
+  const signals: string[] = [];
+  let points = 18;
 
   if (overlap.length > 0) {
-    return `afinidad por genero: ${overlap.slice(0, 2).join(" / ")}`;
+    const genrePoints = Math.min(52, overlap.length * 22);
+    points += genrePoints;
+    signals.push(`generos en comun: ${overlap.slice(0, 2).join(" / ")}`);
   }
 
-  if (typeof item.rating === "number" && item.rating >= 80) {
-    return "afinidad alta por recomendacion comunitaria";
+  if (typeof item.rating === "number") {
+    const ratingPoints = Math.max(0, Math.min(25, Math.round(item.rating / 4)));
+    points += ratingPoints;
+    signals.push(`voto comunitario: ${item.rating}`);
   }
 
   if (item.status === "releasing") {
-    return "afinidad por tendencia en emision";
+    points += 10;
+    signals.push("en emision");
   }
 
-  return "afinidad editorial basada en catalogo";
+  const affinity = Math.min(99, points);
+  const tier = affinity >= 75 ? "alta" : affinity >= 50 ? "media" : "exploratoria";
+  const detail = signals.length > 0 ? signals.join(" · ") : "curada por catalogo";
+
+  return `afinidad ${tier} (${affinity} pts) · ${detail}`;
 }
 
 export default async function AnimeDetailPage({ params, searchParams }: AnimeDetailPageProps) {
