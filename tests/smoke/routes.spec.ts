@@ -1,4 +1,15 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function enableSmokeAuth(page: Page) {
+  await page.context().addCookies([
+    {
+      name: "kigen_smoke_auth",
+      value: "1",
+      domain: "localhost",
+      path: "/",
+    },
+  ]);
+}
 
 test("home route renders dashboard", async ({ page }) => {
   await page.goto("/");
@@ -58,6 +69,68 @@ test("manga detail shows removed banner", async ({ page }) => {
 test("manga detail shows save-failed banner", async ({ page }) => {
   await page.goto("/media/manga/1?library=save-failed");
   await expect(page.getByText("Save failed")).toBeVisible();
+});
+
+test("library route renders authenticated state in smoke auth", async ({ page }) => {
+  await enableSmokeAuth(page);
+  await page.goto("/library");
+  await expect(page.getByRole("heading", { name: "Bienvenido, smoke@kigen.local" })).toBeVisible();
+});
+
+test("anime detail actions redirect with success states", async ({ page }) => {
+  await enableSmokeAuth(page);
+  await page.goto("/media/anime/1");
+
+  await page.getByRole("button", { name: "guardar en biblioteca" }).click();
+  await expect(page).toHaveURL(/library=saved/);
+  await expect(page.getByText("Saved")).toBeVisible();
+
+  await page.getByRole("button", { name: "guardar cambios" }).click();
+  await expect(page).toHaveURL(/library=updated/);
+  await expect(page.getByText("Updated")).toBeVisible();
+
+  await page.getByRole("button", { name: "quitar de biblioteca" }).click();
+  await expect(page).toHaveURL(/library=removed/);
+  await expect(page.getByText("Removed")).toBeVisible();
+});
+
+test("manga detail actions redirect with success states", async ({ page }) => {
+  await enableSmokeAuth(page);
+  await page.goto("/media/manga/1");
+
+  await page.getByRole("button", { name: "guardar en biblioteca" }).click();
+  await expect(page).toHaveURL(/library=saved/);
+  await expect(page.getByText("Saved")).toBeVisible();
+
+  await page.getByRole("button", { name: "guardar cambios" }).click();
+  await expect(page).toHaveURL(/library=updated/);
+  await expect(page.getByText("Updated")).toBeVisible();
+
+  await page.getByRole("button", { name: "quitar de biblioteca" }).click();
+  await expect(page).toHaveURL(/library=removed/);
+  await expect(page.getByText("Removed")).toBeVisible();
+});
+
+test("dashboard quick actions redirect with success states", async ({ page }) => {
+  await enableSmokeAuth(page);
+  await page.goto("/");
+
+  const animeSection = page.locator("article").filter({
+    has: page.getByRole("heading", { name: "Trending Anime" }),
+  });
+  const firstAnimeCard = animeSection.locator("ul > li").first();
+
+  await firstAnimeCard.getByRole("button", { name: "guardar" }).click();
+  await expect(page).toHaveURL(/library=saved/);
+  await expect(page.getByText("Library Saved")).toBeVisible();
+
+  await firstAnimeCard.getByRole("button", { name: "guardar" }).click();
+  await expect(page).toHaveURL(/library=updated/);
+  await expect(page.getByText("Library Updated")).toBeVisible();
+
+  await firstAnimeCard.getByRole("button", { name: "quitar" }).click();
+  await expect(page).toHaveURL(/library=removed/);
+  await expect(page.getByText("Library Removed")).toBeVisible();
 });
 
 test("login route renders auth page", async ({ page }) => {

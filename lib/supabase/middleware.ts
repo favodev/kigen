@@ -1,10 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { env } from "@/lib/env";
+import { env, isSmokeModeEnabled } from "@/lib/env";
 
 export async function updateSession(request: NextRequest) {
-  if (process.env.KIGEN_SMOKE_MODE === "true") {
+  if (isSmokeModeEnabled()) {
     return NextResponse.next({ request });
   }
 

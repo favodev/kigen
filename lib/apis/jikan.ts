@@ -1,4 +1,4 @@
-import { env } from "@/lib/env";
+import { env, isSmokeModeEnabled } from "@/lib/env";
 
 export type ReleaseFeedItem = {
   id: number;
@@ -58,6 +58,27 @@ function toAiringLabel(
 }
 
 export async function getTodayReleases(limit = 8): Promise<ReleaseFeedItem[]> {
+  if (isSmokeModeEnabled()) {
+    return [
+      {
+        id: 1,
+        title: "Smoke Release One",
+        airingAt: "20:00 JST",
+        imageUrl: null,
+        score: 8.0,
+        source: "Jikan" as const,
+      },
+      {
+        id: 2,
+        title: "Smoke Release Two",
+        airingAt: "21:30 JST",
+        imageUrl: null,
+        score: 7.4,
+        source: "Jikan" as const,
+      },
+    ].slice(0, limit);
+  }
+
   const day = currentDayFilter();
   const response = await fetch(`${env.JIKAN_API_URL}/schedules?filter=${day}&limit=${limit}`, {
     next: { revalidate: 1800 },

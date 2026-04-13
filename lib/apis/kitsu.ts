@@ -221,6 +221,27 @@ async function getMangaCompanions(
 }
 
 export async function getTrendingManga(limit = 6): Promise<MangaFeedItem[]> {
+  if (isSmokeModeEnabled()) {
+    return [
+      {
+        id: "1",
+        title: "Smoke Manga One",
+        subtitle: "manga - current",
+        imageUrl: null,
+        score: 8.1,
+        source: "Kitsu" as const,
+      },
+      {
+        id: "2",
+        title: "Smoke Manga Two",
+        subtitle: "manga - finished",
+        imageUrl: null,
+        score: 7.6,
+        source: "Kitsu" as const,
+      },
+    ].slice(0, limit);
+  }
+
   const response = await fetch(
     `${env.KITSU_API_URL}/manga?page[limit]=${limit}&sort=-averageRating`,
     {

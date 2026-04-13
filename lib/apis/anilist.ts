@@ -350,6 +350,27 @@ function smokeAnimeDetail(id: number): AnimeDetail | null {
 }
 
 export async function getTrendingAnime(limit = 6): Promise<AnimeFeedItem[]> {
+  if (isSmokeModeEnabled()) {
+    return [
+      {
+        id: 1,
+        title: "Smoke Anime One",
+        subtitle: "TV - releasing - 2026",
+        imageUrl: null,
+        score: 8.4,
+        source: "AniList" as const,
+      },
+      {
+        id: 2,
+        title: "Smoke Anime Two",
+        subtitle: "TV - finished - 2025",
+        imageUrl: null,
+        score: 7.8,
+        source: "AniList" as const,
+      },
+    ].slice(0, limit);
+  }
+
   const response = await fetch(env.ANILIST_API_URL, {
     method: "POST",
     headers: {
