@@ -1,4 +1,5 @@
 import { env, isSmokeModeEnabled } from "@/lib/env";
+import { getSmokeTodayReleases } from "@/lib/smoke/fixtures";
 
 export type ReleaseFeedItem = {
   id: number;
@@ -59,24 +60,7 @@ function toAiringLabel(
 
 export async function getTodayReleases(limit = 8): Promise<ReleaseFeedItem[]> {
   if (isSmokeModeEnabled()) {
-    return [
-      {
-        id: 1,
-        title: "Smoke Release One",
-        airingAt: "20:00 JST",
-        imageUrl: null,
-        score: 8.0,
-        source: "Jikan" as const,
-      },
-      {
-        id: 2,
-        title: "Smoke Release Two",
-        airingAt: "21:30 JST",
-        imageUrl: null,
-        score: 7.4,
-        source: "Jikan" as const,
-      },
-    ].slice(0, limit);
+    return getSmokeTodayReleases(limit);
   }
 
   const day = currentDayFilter();

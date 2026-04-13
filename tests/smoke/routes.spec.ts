@@ -77,6 +77,49 @@ test("library route renders authenticated state in smoke auth", async ({ page })
   await expect(page.getByRole("heading", { name: "Bienvenido, smoke@kigen.local" })).toBeVisible();
 });
 
+test("library authenticated shows saved banner", async ({ page }) => {
+  await enableSmokeAuth(page);
+  await page.goto("/library?library=saved");
+  await expect(page.getByText("Item guardado correctamente en biblioteca.")).toBeVisible();
+});
+
+test("library authenticated shows updated banner", async ({ page }) => {
+  await enableSmokeAuth(page);
+  await page.goto("/library?library=updated");
+  await expect(page.getByText("Tracking actualizado correctamente.")).toBeVisible();
+});
+
+test("library authenticated shows removed banner", async ({ page }) => {
+  await enableSmokeAuth(page);
+  await page.goto("/library?library=removed");
+  await expect(page.getByText("Item quitado correctamente de biblioteca.")).toBeVisible();
+});
+
+test("library authenticated shows update-failed banner", async ({ page }) => {
+  await enableSmokeAuth(page);
+  await page.goto("/library?library=update-failed");
+  await expect(page.getByText("No se pudo actualizar el item ahora. Reintenta en unos segundos.")).toBeVisible();
+});
+
+test("library authenticated shows remove-failed banner", async ({ page }) => {
+  await enableSmokeAuth(page);
+  await page.goto("/library?library=remove-failed");
+  await expect(page.getByText("No se pudo quitar el item ahora. Reintenta en unos segundos.")).toBeVisible();
+});
+
+test("library authenticated shows setup-required state", async ({ page }) => {
+  await enableSmokeAuth(page);
+  await page.goto("/library?setup=required");
+  await expect(page.getByText("Database setup required")).toBeVisible();
+});
+
+test("login redirects authenticated user to next path", async ({ page }) => {
+  await enableSmokeAuth(page);
+  await page.goto("/login?next=/library");
+  await expect(page).toHaveURL(/\/library$/);
+  await expect(page.getByRole("heading", { name: "Bienvenido, smoke@kigen.local" })).toBeVisible();
+});
+
 test("anime detail actions redirect with success states", async ({ page }) => {
   await enableSmokeAuth(page);
   await page.goto("/media/anime/1");

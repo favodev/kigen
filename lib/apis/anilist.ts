@@ -1,4 +1,5 @@
 import { env, isSmokeModeEnabled } from "@/lib/env";
+import { getSmokeAnimeDetail, getSmokeTrendingAnime } from "@/lib/smoke/fixtures";
 
 export type AnimeFeedItem = {
   id: number;
@@ -301,74 +302,9 @@ function normalizeDescription(value: string | null | undefined): string | null {
   return value.replaceAll("<br>", "\n").trim();
 }
 
-function smokeAnimeDetail(id: number): AnimeDetail | null {
-  if (id !== 1) {
-    return null;
-  }
-
-  return {
-    id: 1,
-    title: "Smoke Anime One",
-    description: "Detalle mock para smoke tests.",
-    imageUrl: null,
-    bannerUrl: null,
-    score: 8.4,
-    episodes: 12,
-    duration: 24,
-    format: "TV",
-    status: "releasing",
-    seasonYear: 2026,
-    genres: ["Action", "Sci-Fi"],
-    characters: [],
-    staff: [],
-    related: [
-      {
-        id: 101,
-        title: "Smoke Anime Sequel",
-        relationType: "sequel",
-        imageUrl: null,
-        format: "TV",
-        status: "finished",
-        seasonYear: 2027,
-      },
-    ],
-    recommendations: [
-      {
-        id: 201,
-        title: "Smoke Reco",
-        imageUrl: null,
-        score: 8.2,
-        format: "TV",
-        status: "releasing",
-        seasonYear: 2025,
-        rating: 89,
-        genres: ["Action"],
-      },
-    ],
-    source: "AniList",
-  };
-}
-
 export async function getTrendingAnime(limit = 6): Promise<AnimeFeedItem[]> {
   if (isSmokeModeEnabled()) {
-    return [
-      {
-        id: 1,
-        title: "Smoke Anime One",
-        subtitle: "TV - releasing - 2026",
-        imageUrl: null,
-        score: 8.4,
-        source: "AniList" as const,
-      },
-      {
-        id: 2,
-        title: "Smoke Anime Two",
-        subtitle: "TV - finished - 2025",
-        imageUrl: null,
-        score: 7.8,
-        source: "AniList" as const,
-      },
-    ].slice(0, limit);
+    return getSmokeTrendingAnime(limit);
   }
 
   const response = await fetch(env.ANILIST_API_URL, {
@@ -420,7 +356,7 @@ export async function getTrendingAnime(limit = 6): Promise<AnimeFeedItem[]> {
 
 export async function getAnimeById(id: number): Promise<AnimeDetail | null> {
   if (isSmokeModeEnabled()) {
-    return smokeAnimeDetail(id);
+    return getSmokeAnimeDetail(id);
   }
 
   const response = await fetch(env.ANILIST_API_URL, {

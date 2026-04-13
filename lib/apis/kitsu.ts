@@ -1,4 +1,5 @@
 import { env, isSmokeModeEnabled } from "@/lib/env";
+import { getSmokeMangaDetail, getSmokeTrendingManga } from "@/lib/smoke/fixtures";
 
 export type MangaFeedItem = {
   id: string;
@@ -135,48 +136,6 @@ function mapMangaSuggestion(item: {
   };
 }
 
-function smokeMangaDetail(id: string): MangaDetail | null {
-  if (id !== "1") {
-    return null;
-  }
-
-  return {
-    id: "1",
-    title: "Smoke Manga One",
-    description: "Detalle mock para smoke tests.",
-    imageUrl: null,
-    bannerUrl: null,
-    score: 8.1,
-    chapterCount: 80,
-    volumeCount: 10,
-    subtype: "manga",
-    status: "current",
-    ageRating: null,
-    startDate: "2020-01-01",
-    related: [
-      {
-        id: "11",
-        title: "Smoke Related Manga",
-        imageUrl: null,
-        score: 7.9,
-        subtype: "manga",
-        status: "finished",
-      },
-    ],
-    recommendations: [
-      {
-        id: "21",
-        title: "Smoke Manga Reco",
-        imageUrl: null,
-        score: 8.3,
-        subtype: "manga",
-        status: "current",
-      },
-    ],
-    source: "Kitsu",
-  };
-}
-
 async function getMangaCompanions(
   currentId: string,
   subtypeRaw: string | null | undefined,
@@ -222,24 +181,7 @@ async function getMangaCompanions(
 
 export async function getTrendingManga(limit = 6): Promise<MangaFeedItem[]> {
   if (isSmokeModeEnabled()) {
-    return [
-      {
-        id: "1",
-        title: "Smoke Manga One",
-        subtitle: "manga - current",
-        imageUrl: null,
-        score: 8.1,
-        source: "Kitsu" as const,
-      },
-      {
-        id: "2",
-        title: "Smoke Manga Two",
-        subtitle: "manga - finished",
-        imageUrl: null,
-        score: 7.6,
-        source: "Kitsu" as const,
-      },
-    ].slice(0, limit);
+    return getSmokeTrendingManga(limit);
   }
 
   const response = await fetch(
@@ -276,7 +218,7 @@ export async function getTrendingManga(limit = 6): Promise<MangaFeedItem[]> {
 
 export async function getMangaById(id: string): Promise<MangaDetail | null> {
   if (isSmokeModeEnabled()) {
-    return smokeMangaDetail(id);
+    return getSmokeMangaDetail(id);
   }
 
   const response = await fetch(`${env.KITSU_API_URL}/manga/${encodeURIComponent(id)}`, {
