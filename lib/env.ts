@@ -24,3 +24,7 @@ export function hasSupabaseConfig(): boolean {
 export function isDiagnosticsEnabled(): boolean {
   return process.env.NODE_ENV !== "production" || env.KIGEN_SHOW_DIAGNOSTICS === "true";
 }
+
+export function isSmokeModeEnabled(): boolean {
+  return process.env.KIGEN_SMOKE_MODE === "true";
+}
