@@ -112,7 +112,12 @@ export default async function AnimeDetailPage({ params, searchParams }: AnimeDet
           .eq("source", "AniList")
           .in("external_id", relatedIds);
 
-        (relatedData ?? []).forEach((entry) => {
+        (relatedData ?? []).forEach((entry: {
+          id: string;
+          external_id: string;
+          status: string;
+          progress: number;
+        }) => {
           relatedLibraryMap.set(String(entry.external_id), {
             id: entry.id,
             status: entry.status,

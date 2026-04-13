@@ -128,7 +128,18 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
 
         {!setupRequired && (entries?.length ?? 0) > 0 ? (
           <ul className="mt-6 space-y-3">
-            {(entries ?? []).map((entry) => (
+            {(entries ?? []).map((entry: {
+              id: string;
+              title: string;
+              subtitle: string | null;
+              image_url: string | null;
+              score: number | null;
+              media_kind: string;
+              status: string;
+              progress: number;
+              notes: string | null;
+              source: string;
+            }) => (
               <li
                 key={entry.id}
                 className="flex gap-3 rounded-sm border border-white/10 bg-black/30 p-3"

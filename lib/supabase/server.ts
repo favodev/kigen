@@ -3,7 +3,22 @@ import { cookies } from "next/headers";
 
 import { env } from "@/lib/env";
 
-export async function createSupabaseServerClient() {
+type SupabaseServerClient = ReturnType<typeof createServerClient>;
+
+export async function createSupabaseServerClient(): Promise<SupabaseServerClient> {
+  if (process.env.KIGEN_SMOKE_MODE === "true") {
+    return {
+      auth: {
+        async getUser() {
+          return {
+            data: { user: null },
+            error: null,
+          };
+        },
+      },
+    } as unknown as SupabaseServerClient;
+  }
+
   const cookieStore = await cookies();
 
   return createServerClient(

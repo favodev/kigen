@@ -92,7 +92,13 @@ async function loadLibrarySnapshot() {
   const savedKeys = new Set<string>();
   const entriesByKey = new Map<string, DashboardLibraryEntry>();
 
-  (data ?? []).forEach((item) => {
+  (data ?? []).forEach((item: {
+    id: string;
+    source: string;
+    external_id: string;
+    status: string;
+    progress: number;
+  }) => {
     const key = toLibraryKey(item.source, item.external_id);
     savedKeys.add(key);
     entriesByKey.set(key, {
