@@ -1,5 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 
+type BannerCase = {
+  name: string;
+  path: string;
+  text: string;
+  requiresSmokeAuth?: boolean;
+};
+
 async function enableSmokeAuth(page: Page) {
   await page.context().addCookies([
     {
@@ -11,6 +18,106 @@ async function enableSmokeAuth(page: Page) {
   ]);
 }
 
+function sectionByHeading(page: Page, heading: string) {
+  return page.locator("article").filter({
+    has: page.getByRole("heading", { name: heading }),
+  });
+}
+
+async function assertBannerCase(page: Page, bannerCase: BannerCase) {
+  if (bannerCase.requiresSmokeAuth) {
+    await enableSmokeAuth(page);
+  }
+
+  await page.goto(bannerCase.path);
+  await expect(page.getByText(bannerCase.text)).toBeVisible();
+}
+
+async function assertDetailActionFlow(page: Page, detailPath: string) {
+  await enableSmokeAuth(page);
+  await page.goto(detailPath);
+
+  await page.getByRole("button", { name: "guardar en biblioteca" }).click();
+  await expect(page).toHaveURL(/library=saved/);
+  await expect(page.getByText("Saved")).toBeVisible();
+
+  await page.getByRole("button", { name: "guardar cambios" }).click();
+  await expect(page).toHaveURL(/library=updated/);
+  await expect(page.getByText("Updated")).toBeVisible();
+
+  await page.getByRole("button", { name: "quitar de biblioteca" }).click();
+  await expect(page).toHaveURL(/library=removed/);
+  await expect(page.getByText("Removed")).toBeVisible();
+}
+
+const homeLibraryBannerCases: BannerCase[] = [
+  { name: "saved", path: "/?library=saved", text: "Library Saved" },
+  { name: "updated", path: "/?library=updated", text: "Library Updated" },
+  { name: "removed", path: "/?library=removed", text: "Library Removed" },
+  { name: "save-failed", path: "/?library=save-failed", text: "Library Save Failed" },
+  { name: "update-failed", path: "/?library=update-failed", text: "Library Update Failed" },
+  { name: "remove-failed", path: "/?library=remove-failed", text: "Library Remove Failed" },
+  {
+    name: "setup-required",
+    path: "/?library=setup-required",
+    text: "Library Setup Required",
+  },
+];
+
+const mediaDetailBannerCases: BannerCase[] = [
+  { name: "anime saved", path: "/media/anime/1?library=saved", text: "Saved" },
+  {
+    name: "anime update-failed",
+    path: "/media/anime/1?library=update-failed",
+    text: "Update failed",
+  },
+  { name: "manga removed", path: "/media/manga/1?library=removed", text: "Removed" },
+  {
+    name: "manga save-failed",
+    path: "/media/manga/1?library=save-failed",
+    text: "Save failed",
+  },
+];
+
+const libraryAuthenticatedBannerCases: BannerCase[] = [
+  {
+    name: "saved",
+    path: "/library?library=saved",
+    text: "Item guardado correctamente en biblioteca.",
+    requiresSmokeAuth: true,
+  },
+  {
+    name: "updated",
+    path: "/library?library=updated",
+    text: "Tracking actualizado correctamente.",
+    requiresSmokeAuth: true,
+  },
+  {
+    name: "removed",
+    path: "/library?library=removed",
+    text: "Item quitado correctamente de biblioteca.",
+    requiresSmokeAuth: true,
+  },
+  {
+    name: "update-failed",
+    path: "/library?library=update-failed",
+    text: "No se pudo actualizar el item ahora. Reintenta en unos segundos.",
+    requiresSmokeAuth: true,
+  },
+  {
+    name: "remove-failed",
+    path: "/library?library=remove-failed",
+    text: "No se pudo quitar el item ahora. Reintenta en unos segundos.",
+    requiresSmokeAuth: true,
+  },
+  {
+    name: "setup-required",
+    path: "/library?setup=required",
+    text: "Database setup required",
+    requiresSmokeAuth: true,
+  },
+];
+
 test("home route renders dashboard", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Dashboard de Inicio" })).toBeVisible();
@@ -18,10 +125,7 @@ test("home route renders dashboard", async ({ page }) => {
 
 test("home today releases shows live status and countdown metadata", async ({ page }) => {
   await page.goto("/");
-
-  const releasesSection = page.locator("article").filter({
-    has: page.getByRole("heading", { name: "Today Releases" }),
-  });
+  const releasesSection = sectionByHeading(page, "Today Releases");
 
   await expect(releasesSection.getByText("live anilist")).toBeVisible();
 
@@ -31,60 +135,17 @@ test("home today releases shows live status and countdown metadata", async ({ pa
   await expect(firstCard).toContainText(/(validacion jikan \d+%|sin validacion jikan)/i);
 });
 
-test("home shows library saved banner", async ({ page }) => {
-  await page.goto("/?library=saved");
-  await expect(page.getByText("Library Saved")).toBeVisible();
-});
+for (const bannerCase of homeLibraryBannerCases) {
+  test(`home shows library ${bannerCase.name} banner`, async ({ page }) => {
+    await assertBannerCase(page, bannerCase);
+  });
+}
 
-test("home shows library updated banner", async ({ page }) => {
-  await page.goto("/?library=updated");
-  await expect(page.getByText("Library Updated")).toBeVisible();
-});
-
-test("home shows library removed banner", async ({ page }) => {
-  await page.goto("/?library=removed");
-  await expect(page.getByText("Library Removed")).toBeVisible();
-});
-
-test("home shows library save-failed banner", async ({ page }) => {
-  await page.goto("/?library=save-failed");
-  await expect(page.getByText("Library Save Failed")).toBeVisible();
-});
-
-test("home shows library update-failed banner", async ({ page }) => {
-  await page.goto("/?library=update-failed");
-  await expect(page.getByText("Library Update Failed")).toBeVisible();
-});
-
-test("home shows library remove-failed banner", async ({ page }) => {
-  await page.goto("/?library=remove-failed");
-  await expect(page.getByText("Library Remove Failed")).toBeVisible();
-});
-
-test("home shows library setup-required banner", async ({ page }) => {
-  await page.goto("/?library=setup-required");
-  await expect(page.getByText("Library Setup Required")).toBeVisible();
-});
-
-test("anime detail shows saved banner", async ({ page }) => {
-  await page.goto("/media/anime/1?library=saved");
-  await expect(page.getByText("Saved")).toBeVisible();
-});
-
-test("anime detail shows update-failed banner", async ({ page }) => {
-  await page.goto("/media/anime/1?library=update-failed");
-  await expect(page.getByText("Update failed")).toBeVisible();
-});
-
-test("manga detail shows removed banner", async ({ page }) => {
-  await page.goto("/media/manga/1?library=removed");
-  await expect(page.getByText("Removed")).toBeVisible();
-});
-
-test("manga detail shows save-failed banner", async ({ page }) => {
-  await page.goto("/media/manga/1?library=save-failed");
-  await expect(page.getByText("Save failed")).toBeVisible();
-});
+for (const bannerCase of mediaDetailBannerCases) {
+  test(`media detail shows ${bannerCase.name} banner`, async ({ page }) => {
+    await assertBannerCase(page, bannerCase);
+  });
+}
 
 test("library route renders authenticated state in smoke auth", async ({ page }) => {
   await enableSmokeAuth(page);
@@ -92,41 +153,11 @@ test("library route renders authenticated state in smoke auth", async ({ page })
   await expect(page.getByRole("heading", { name: "Bienvenido, smoke@kigen.local" })).toBeVisible();
 });
 
-test("library authenticated shows saved banner", async ({ page }) => {
-  await enableSmokeAuth(page);
-  await page.goto("/library?library=saved");
-  await expect(page.getByText("Item guardado correctamente en biblioteca.")).toBeVisible();
-});
-
-test("library authenticated shows updated banner", async ({ page }) => {
-  await enableSmokeAuth(page);
-  await page.goto("/library?library=updated");
-  await expect(page.getByText("Tracking actualizado correctamente.")).toBeVisible();
-});
-
-test("library authenticated shows removed banner", async ({ page }) => {
-  await enableSmokeAuth(page);
-  await page.goto("/library?library=removed");
-  await expect(page.getByText("Item quitado correctamente de biblioteca.")).toBeVisible();
-});
-
-test("library authenticated shows update-failed banner", async ({ page }) => {
-  await enableSmokeAuth(page);
-  await page.goto("/library?library=update-failed");
-  await expect(page.getByText("No se pudo actualizar el item ahora. Reintenta en unos segundos.")).toBeVisible();
-});
-
-test("library authenticated shows remove-failed banner", async ({ page }) => {
-  await enableSmokeAuth(page);
-  await page.goto("/library?library=remove-failed");
-  await expect(page.getByText("No se pudo quitar el item ahora. Reintenta en unos segundos.")).toBeVisible();
-});
-
-test("library authenticated shows setup-required state", async ({ page }) => {
-  await enableSmokeAuth(page);
-  await page.goto("/library?setup=required");
-  await expect(page.getByText("Database setup required")).toBeVisible();
-});
+for (const bannerCase of libraryAuthenticatedBannerCases) {
+  test(`library authenticated shows ${bannerCase.name} banner`, async ({ page }) => {
+    await assertBannerCase(page, bannerCase);
+  });
+}
 
 test("login redirects authenticated user to next path", async ({ page }) => {
   await enableSmokeAuth(page);
@@ -136,46 +167,18 @@ test("login redirects authenticated user to next path", async ({ page }) => {
 });
 
 test("anime detail actions redirect with success states", async ({ page }) => {
-  await enableSmokeAuth(page);
-  await page.goto("/media/anime/1");
-
-  await page.getByRole("button", { name: "guardar en biblioteca" }).click();
-  await expect(page).toHaveURL(/library=saved/);
-  await expect(page.getByText("Saved")).toBeVisible();
-
-  await page.getByRole("button", { name: "guardar cambios" }).click();
-  await expect(page).toHaveURL(/library=updated/);
-  await expect(page.getByText("Updated")).toBeVisible();
-
-  await page.getByRole("button", { name: "quitar de biblioteca" }).click();
-  await expect(page).toHaveURL(/library=removed/);
-  await expect(page.getByText("Removed")).toBeVisible();
+  await assertDetailActionFlow(page, "/media/anime/1");
 });
 
 test("manga detail actions redirect with success states", async ({ page }) => {
-  await enableSmokeAuth(page);
-  await page.goto("/media/manga/1");
-
-  await page.getByRole("button", { name: "guardar en biblioteca" }).click();
-  await expect(page).toHaveURL(/library=saved/);
-  await expect(page.getByText("Saved")).toBeVisible();
-
-  await page.getByRole("button", { name: "guardar cambios" }).click();
-  await expect(page).toHaveURL(/library=updated/);
-  await expect(page.getByText("Updated")).toBeVisible();
-
-  await page.getByRole("button", { name: "quitar de biblioteca" }).click();
-  await expect(page).toHaveURL(/library=removed/);
-  await expect(page.getByText("Removed")).toBeVisible();
+  await assertDetailActionFlow(page, "/media/manga/1");
 });
 
 test("dashboard quick actions redirect with success states", async ({ page }) => {
   await enableSmokeAuth(page);
   await page.goto("/");
 
-  const animeSection = page.locator("article").filter({
-    has: page.getByRole("heading", { name: "Trending Anime" }),
-  });
+  const animeSection = sectionByHeading(page, "Trending Anime");
   const firstAnimeCard = animeSection.locator("ul > li").first();
 
   await firstAnimeCard.getByRole("button", { name: "guardar" }).click();

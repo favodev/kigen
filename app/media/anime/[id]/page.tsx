@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { addToLibrary, removeFromLibrary, updateLibraryEntry } from "@/app/library/actions";
+import { CoverImage } from "@/components/media/cover-image";
 import { AppShell } from "@/components/shell/app-shell";
 import { getAnimeById } from "@/lib/apis/anilist";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -193,7 +194,7 @@ export default async function AnimeDetailPage({ params, searchParams }: AnimeDet
         <div className="mt-4 grid items-start gap-5 md:grid-cols-[220px_1fr]">
           <div className="aspect-2/3 w-full self-start overflow-hidden rounded-sm border border-white/10 bg-slate-900">
             {anime.imageUrl ? (
-              <img src={anime.imageUrl} alt={anime.title} className="h-full w-full object-cover" />
+              <CoverImage src={anime.imageUrl} alt={anime.title} />
             ) : (
               <div className="h-72 w-full bg-linear-to-br from-cyan-300/20 to-indigo-500/20" />
             )}
@@ -342,11 +343,7 @@ export default async function AnimeDetailPage({ params, searchParams }: AnimeDet
                       >
                         <div className="h-12 w-10 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900">
                           {character.imageUrl ? (
-                            <img
-                              src={character.imageUrl}
-                              alt={character.name}
-                              className="h-full w-full object-cover"
-                            />
+                            <CoverImage src={character.imageUrl} alt={character.name} />
                           ) : (
                             <div className="h-full w-full bg-linear-to-br from-cyan-300/20 to-indigo-500/20" />
                           )}
@@ -376,7 +373,7 @@ export default async function AnimeDetailPage({ params, searchParams }: AnimeDet
                       >
                         <div className="h-12 w-10 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900">
                           {member.imageUrl ? (
-                            <img src={member.imageUrl} alt={member.name} className="h-full w-full object-cover" />
+                            <CoverImage src={member.imageUrl} alt={member.name} />
                           ) : (
                             <div className="h-full w-full bg-linear-to-br from-violet-300/20 to-cyan-500/20" />
                           )}
@@ -408,7 +405,7 @@ export default async function AnimeDetailPage({ params, searchParams }: AnimeDet
                       >
                         <div className="h-12 w-10 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900">
                           {item.imageUrl ? (
-                            <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
+                            <CoverImage src={item.imageUrl} alt={item.title} />
                           ) : (
                             <div className="h-full w-full bg-linear-to-br from-cyan-300/20 to-indigo-500/20" />
                           )}
@@ -513,7 +510,7 @@ export default async function AnimeDetailPage({ params, searchParams }: AnimeDet
                       >
                         <div className="h-12 w-10 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900">
                           {item.imageUrl ? (
-                            <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
+                            <CoverImage src={item.imageUrl} alt={item.title} />
                           ) : (
                             <div className="h-full w-full bg-linear-to-br from-violet-300/20 to-cyan-500/20" />
                           )}

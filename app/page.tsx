@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { addToLibrary, removeFromLibrary, updateLibraryEntry } from "@/app/library/actions";
+import { CoverImage } from "@/components/media/cover-image";
 import { AiringCountdown } from "@/components/releases/airing-countdown";
 import { AppShell } from "@/components/shell/app-shell";
 import { getTrendingAnime, getUpcomingAiringAnime } from "@/lib/apis/anilist";
@@ -522,7 +523,7 @@ export default async function Home({ searchParams }: HomePageProps) {
               <li key={`${item.id}-${index}`} className="rounded-sm border border-white/10 bg-black/30 p-3">
                 <div className="mb-3 h-36 w-full overflow-hidden rounded-sm border border-white/10 bg-slate-900">
                   {item.imageUrl ? (
-                    <img src={item.imageUrl} alt={item.title} className="h-full w-full object-cover" />
+                    <CoverImage src={item.imageUrl} alt={item.title} />
                   ) : (
                     <div className="h-full w-full bg-linear-to-br from-cyan-300/20 to-fuchsia-500/20" />
                   )}
@@ -574,11 +575,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                     className="h-20 w-14 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900"
                   >
                     {item.imageUrl ? (
-                      <img
-                        src={item.imageUrl}
-                        alt={item.title}
-                        className="h-full w-full object-cover"
-                      />
+                      <CoverImage src={item.imageUrl} alt={item.title} />
                     ) : (
                       <div className="h-full w-full bg-linear-to-br from-cyan-300/20 to-indigo-500/20" />
                     )}
@@ -586,11 +583,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                 ) : (
                   <div className="h-20 w-14 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900">
                     {item.imageUrl ? (
-                      <img
-                        src={item.imageUrl}
-                        alt={item.title}
-                        className="h-full w-full object-cover"
-                      />
+                      <CoverImage src={item.imageUrl} alt={item.title} />
                     ) : (
                       <div className="h-full w-full bg-linear-to-br from-cyan-300/20 to-indigo-500/20" />
                     )}
@@ -745,11 +738,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                     className="h-20 w-14 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900"
                   >
                     {item.imageUrl ? (
-                      <img
-                        src={item.imageUrl}
-                        alt={item.title}
-                        className="h-full w-full object-cover"
-                      />
+                      <CoverImage src={item.imageUrl} alt={item.title} />
                     ) : (
                       <div className="h-full w-full bg-linear-to-br from-violet-300/20 to-cyan-400/20" />
                     )}
@@ -757,11 +746,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                 ) : (
                   <div className="h-20 w-14 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900">
                     {item.imageUrl ? (
-                      <img
-                        src={item.imageUrl}
-                        alt={item.title}
-                        className="h-full w-full object-cover"
-                      />
+                      <CoverImage src={item.imageUrl} alt={item.title} />
                     ) : (
                       <div className="h-full w-full bg-linear-to-br from-violet-300/20 to-cyan-400/20" />
                     )}

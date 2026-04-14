@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { removeFromLibrary, updateLibraryEntry } from "@/app/library/actions";
+import { CoverImage } from "@/components/media/cover-image";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type LibraryPageProps = {
@@ -146,11 +147,7 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
               >
                 <div className="h-20 w-14 shrink-0 overflow-hidden rounded-sm border border-white/10 bg-slate-900">
                   {entry.image_url ? (
-                    <img
-                      src={entry.image_url}
-                      alt={entry.title}
-                      className="h-full w-full object-cover"
-                    />
+                    <CoverImage src={entry.image_url} alt={entry.title} />
                   ) : (
                     <div className="h-full w-full bg-linear-to-br from-cyan-300/20 to-indigo-500/20" />
                   )}
