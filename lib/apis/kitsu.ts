@@ -1,12 +1,13 @@
 import { env, isSmokeModeEnabled } from "@/lib/env";
+import {
+  normalizeNumericStringScore,
+  normalizeStatusLabel,
+  type UnifiedMediaCardBase,
+} from "@/lib/media/contracts";
 import { getSmokeMangaDetail, getSmokeTrendingManga } from "@/lib/smoke/fixtures";
 
-export type MangaFeedItem = {
+export type MangaFeedItem = UnifiedMediaCardBase & {
   id: string;
-  title: string;
-  subtitle: string;
-  imageUrl: string | null;
-  score: number | null;
   source: "Kitsu";
 };
 
@@ -42,11 +43,8 @@ export type MangaDetail = {
   source: "Kitsu";
 };
 
-type MangaSuggestion = {
+type MangaSuggestion = Pick<UnifiedMediaCardBase, "title" | "imageUrl" | "score"> & {
   id: string;
-  title: string;
-  imageUrl: string | null;
-  score: number | null;
   subtype: string | null;
   status: string | null;
 };
@@ -94,14 +92,6 @@ type KitsuDetailResponse = {
   };
 };
 
-function normalizeText(value: string | null | undefined): string {
-  if (!value) {
-    return "Unknown";
-  }
-
-  return value.replaceAll("_", " ").toLowerCase();
-}
-
 function normalizeDescription(value: string | null | undefined): string | null {
   if (!value) {
     return null;
@@ -124,15 +114,14 @@ function mapMangaSuggestion(item: {
   };
 }): MangaSuggestion {
   const attributes = item.attributes;
-  const scoreRaw = Number(attributes?.averageRating ?? "");
 
   return {
     id: item.id,
     title: attributes?.canonicalTitle || "Untitled manga",
     imageUrl: attributes?.posterImage?.large || attributes?.posterImage?.medium || null,
-    score: Number.isFinite(scoreRaw) ? Math.round(scoreRaw) / 10 : null,
-    subtype: attributes?.subtype ? normalizeText(attributes.subtype) : null,
-    status: attributes?.status ? normalizeText(attributes.status) : null,
+    score: normalizeNumericStringScore(attributes?.averageRating),
+    subtype: attributes?.subtype ? normalizeStatusLabel(attributes.subtype) : null,
+    status: attributes?.status ? normalizeStatusLabel(attributes.status) : null,
   };
 }
 
@@ -160,7 +149,7 @@ async function getMangaCompanions(
   }
 
   const json = (await response.json()) as KitsuResponse;
-  const normalizedStatus = statusRaw ? normalizeText(statusRaw) : null;
+  const normalizedStatus = statusRaw ? normalizeStatusLabel(statusRaw) : null;
   const candidates = (json.data ?? [])
     .map(mapMangaSuggestion)
     .filter((item) => item.id !== currentId);
@@ -203,14 +192,13 @@ export async function getTrendingManga(limit = 6): Promise<MangaFeedItem[]> {
 
   return items.map((item) => {
     const attributes = item.attributes;
-    const scoreRaw = Number(attributes?.averageRating ?? "");
 
     return {
       id: item.id,
       title: attributes?.canonicalTitle || "Untitled manga",
-      subtitle: `${normalizeText(attributes?.subtype)} - ${normalizeText(attributes?.status)}`,
+      subtitle: `${normalizeStatusLabel(attributes?.subtype)} - ${normalizeStatusLabel(attributes?.status)}`,
       imageUrl: attributes?.posterImage?.large || attributes?.posterImage?.medium || null,
-      score: Number.isFinite(scoreRaw) ? Math.round(scoreRaw) / 10 : null,
+      score: normalizeNumericStringScore(attributes?.averageRating),
       source: "Kitsu" as const,
     };
   });
@@ -244,7 +232,6 @@ export async function getMangaById(id: string): Promise<MangaDetail | null> {
   }
 
   const attributes = item.attributes;
-  const scoreRaw = Number(attributes?.averageRating ?? "");
   const companions = await getMangaCompanions(item.id, attributes?.subtype, attributes?.status);
 
   return {
@@ -257,11 +244,11 @@ export async function getMangaById(id: string): Promise<MangaDetail | null> {
       attributes?.posterImage?.medium ||
       null,
     bannerUrl: attributes?.coverImage?.original || attributes?.coverImage?.large || null,
-    score: Number.isFinite(scoreRaw) ? Math.round(scoreRaw) / 10 : null,
+    score: normalizeNumericStringScore(attributes?.averageRating),
     chapterCount: attributes?.chapterCount ?? null,
     volumeCount: attributes?.volumeCount ?? null,
-    subtype: attributes?.subtype ? normalizeText(attributes.subtype) : null,
-    status: attributes?.status ? normalizeText(attributes.status) : null,
+    subtype: attributes?.subtype ? normalizeStatusLabel(attributes.subtype) : null,
+    status: attributes?.status ? normalizeStatusLabel(attributes.status) : null,
     ageRating: attributes?.ageRating ?? null,
     startDate: attributes?.startDate ?? null,
     related: companions.related,

@@ -9,27 +9,20 @@ import { getTodayReleases } from "@/lib/apis/jikan";
 import { getTrendingManga } from "@/lib/apis/kitsu";
 import { getConnectionsHealth } from "@/lib/connections/health";
 import { isDiagnosticsEnabled } from "@/lib/env";
+import type { MediaSource, UnifiedMediaCardBase, UnifiedReleaseBase } from "@/lib/media/contracts";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-type FeedCardItem = {
+type FeedCardItem = UnifiedMediaCardBase & {
   id: string | number;
-  title: string;
-  subtitle: string;
-  imageUrl: string | null;
-  score: number | null;
-  source: string;
+  source: MediaSource;
 };
 
-type ReleaseCardItem = {
+type ReleaseCardItem = UnifiedReleaseBase & {
   id: number;
-  title: string;
-  airingAt: string;
   airingAtUnix: number | null;
   episode: number | null;
-  imageUrl: string | null;
-  score: number | null;
   validationConfidence: number;
-  source: string;
+  source: MediaSource;
 };
 
 type HomePageProps = {

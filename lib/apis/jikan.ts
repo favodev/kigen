@@ -1,12 +1,9 @@
 import { env, isSmokeModeEnabled } from "@/lib/env";
+import { normalizeTenScaleScore, type UnifiedReleaseBase } from "@/lib/media/contracts";
 import { getSmokeTodayReleases } from "@/lib/smoke/fixtures";
 
-export type ReleaseFeedItem = {
+export type ReleaseFeedItem = UnifiedReleaseBase & {
   id: number;
-  title: string;
-  airingAt: string;
-  imageUrl: string | null;
-  score: number | null;
   source: "Jikan";
 };
 
@@ -80,7 +77,7 @@ export async function getTodayReleases(limit = 8): Promise<ReleaseFeedItem[]> {
     title: item.title || "Untitled release",
     airingAt: toAiringLabel(item.broadcast?.time, item.broadcast?.timezone),
     imageUrl: item.images?.jpg?.large_image_url || item.images?.jpg?.image_url || null,
-    score: typeof item.score === "number" ? item.score : null,
+    score: normalizeTenScaleScore(item.score),
     source: "Jikan",
   }));
 }

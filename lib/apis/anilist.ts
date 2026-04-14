@@ -1,16 +1,18 @@
 import { env, isSmokeModeEnabled } from "@/lib/env";
 import {
+  normalizeHundredScaleScore,
+  normalizeStatusLabel,
+  type UnifiedMediaCardBase,
+  type UnifiedPersonBase,
+} from "@/lib/media/contracts";
+import {
   getSmokeAnimeDetail,
   getSmokeTrendingAnime,
   getSmokeUpcomingAiringAnime,
 } from "@/lib/smoke/fixtures";
 
-export type AnimeFeedItem = {
+export type AnimeFeedItem = UnifiedMediaCardBase & {
   id: number;
-  title: string;
-  subtitle: string;
-  imageUrl: string | null;
-  score: number | null;
   source: "AniList";
 };
 
@@ -37,18 +39,8 @@ export type AnimeDetail = {
   status: string | null;
   seasonYear: number | null;
   genres: string[];
-  characters: Array<{
-    id: number;
-    name: string;
-    role: string | null;
-    imageUrl: string | null;
-  }>;
-  staff: Array<{
-    id: number;
-    name: string;
-    role: string | null;
-    imageUrl: string | null;
-  }>;
+  characters: Array<({ id: number } & UnifiedPersonBase)>;
+  staff: Array<({ id: number } & UnifiedPersonBase)>;
   related: Array<{
     id: number;
     title: string;
@@ -327,14 +319,6 @@ const ANIME_DETAIL_QUERY = `
   }
 `;
 
-function normalizeStatus(value: string | null | undefined): string {
-  if (!value) {
-    return "Unknown";
-  }
-
-  return value.replaceAll("_", " ").toLowerCase();
-}
-
 function normalizeDescription(value: string | null | undefined): string | null {
   if (!value) {
     return null;
@@ -377,15 +361,12 @@ export async function getTrendingAnime(limit = 6): Promise<AnimeFeedItem[]> {
 
   return media.map((item) => {
     const title = item.title?.english || item.title?.romaji || "Untitled anime";
-    const score =
-      typeof item.averageScore === "number"
-        ? Math.round((item.averageScore / 10) * 10) / 10
-        : null;
+    const score = normalizeHundredScaleScore(item.averageScore);
 
     return {
       id: item.id,
       title,
-      subtitle: `${item.format ?? "Unknown"} - ${normalizeStatus(item.status)}${
+      subtitle: `${item.format ?? "Unknown"} - ${normalizeStatusLabel(item.status)}${
         item.seasonYear ? ` - ${item.seasonYear}` : ""
       }`,
       imageUrl: item.coverImage?.large || item.coverImage?.medium || null,
@@ -431,10 +412,7 @@ export async function getUpcomingAiringAnime(limit = 8): Promise<UpcomingAiringA
     .filter((item) => item.nextAiringEpisode?.airingAt)
     .map((item) => {
       const title = item.title?.english || item.title?.romaji || "Untitled anime";
-      const score =
-        typeof item.averageScore === "number"
-          ? Math.round((item.averageScore / 10) * 10) / 10
-          : null;
+      const score = normalizeHundredScaleScore(item.averageScore);
 
       return {
         id: item.id,
@@ -486,10 +464,7 @@ export async function getAnimeById(id: number): Promise<AnimeDetail | null> {
     return null;
   }
 
-  const score =
-    typeof media.averageScore === "number"
-      ? Math.round((media.averageScore / 10) * 10) / 10
-      : null;
+  const score = normalizeHundredScaleScore(media.averageScore);
 
   return {
     id: media.id,
@@ -501,7 +476,7 @@ export async function getAnimeById(id: number): Promise<AnimeDetail | null> {
     episodes: media.episodes ?? null,
     duration: media.duration ?? null,
     format: media.format ?? null,
-    status: media.status ? normalizeStatus(media.status) : null,
+    status: media.status ? normalizeStatusLabel(media.status) : null,
     seasonYear: media.seasonYear ?? null,
     genres: media.genres ?? [],
     characters: (media.characters?.edges ?? [])
@@ -525,20 +500,17 @@ export async function getAnimeById(id: number): Promise<AnimeDetail | null> {
       .map((edge) => ({
         id: edge.node!.id,
         title: edge.node!.title?.english || edge.node!.title?.romaji || "Untitled",
-        relationType: edge.relationType ? normalizeStatus(edge.relationType) : null,
+        relationType: edge.relationType ? normalizeStatusLabel(edge.relationType) : null,
         imageUrl: edge.node?.coverImage?.large || edge.node?.coverImage?.medium || null,
         format: edge.node?.format ?? null,
-        status: edge.node?.status ? normalizeStatus(edge.node.status) : null,
+        status: edge.node?.status ? normalizeStatusLabel(edge.node.status) : null,
         seasonYear: edge.node?.seasonYear ?? null,
       })),
     recommendations: (media.recommendations?.nodes ?? [])
       .filter((node) => node.mediaRecommendation?.id && (node.mediaRecommendation.title?.english || node.mediaRecommendation.title?.romaji))
       .map((node) => {
         const rec = node.mediaRecommendation!;
-        const recScore =
-          typeof rec.averageScore === "number"
-            ? Math.round((rec.averageScore / 10) * 10) / 10
-            : null;
+        const recScore = normalizeHundredScaleScore(rec.averageScore);
 
         return {
           id: rec.id,
@@ -546,7 +518,7 @@ export async function getAnimeById(id: number): Promise<AnimeDetail | null> {
           imageUrl: rec.coverImage?.large || rec.coverImage?.medium || null,
           score: recScore,
           format: rec.format ?? null,
-          status: rec.status ? normalizeStatus(rec.status) : null,
+          status: rec.status ? normalizeStatusLabel(rec.status) : null,
           seasonYear: rec.seasonYear ?? null,
           rating: typeof node.rating === "number" ? node.rating : null,
           genres: rec.genres ?? [],
