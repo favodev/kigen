@@ -27,7 +27,7 @@ type ReleaseCardItem = {
   episode: number | null;
   imageUrl: string | null;
   score: number | null;
-  validatedByJikan: boolean;
+  validationConfidence: number;
   source: string;
 };
 
@@ -184,7 +184,7 @@ function fallbackReleaseItems(): ReleaseCardItem[] {
       episode: null,
       imageUrl: null,
       score: 8.2,
-      validatedByJikan: false,
+      validationConfidence: 0,
       source: "Fallback",
     },
     {
@@ -195,7 +195,7 @@ function fallbackReleaseItems(): ReleaseCardItem[] {
       episode: null,
       imageUrl: null,
       score: 7.9,
-      validatedByJikan: false,
+      validationConfidence: 0,
       source: "Fallback",
     },
     {
@@ -206,7 +206,7 @@ function fallbackReleaseItems(): ReleaseCardItem[] {
       episode: null,
       imageUrl: null,
       score: null,
-      validatedByJikan: false,
+      validationConfidence: 0,
       source: "Fallback",
     },
   ];
@@ -216,18 +216,43 @@ function normalizeTitleForValidation(value: string): string {
   return value.toLowerCase().replaceAll(/[^a-z0-9]+/g, " ").trim();
 }
 
-function hasJikanValidation(animeTitle: string, jikanTitles: string[]): boolean {
+function getJikanValidationConfidence(animeTitle: string, jikanTitles: string[]): number {
   const normalizedAnime = normalizeTitleForValidation(animeTitle);
+  const animeTokens = new Set(normalizedAnime.split(" ").filter((token) => token.length >= 3));
+  let best = 0;
 
-  return jikanTitles.some((jikanTitle) => {
+  for (const jikanTitle of jikanTitles) {
     const normalizedJikan = normalizeTitleForValidation(jikanTitle);
 
     if (normalizedAnime.length < 4 || normalizedJikan.length < 4) {
-      return false;
+      continue;
     }
 
-    return normalizedAnime.includes(normalizedJikan) || normalizedJikan.includes(normalizedAnime);
-  });
+    if (normalizedAnime === normalizedJikan) {
+      best = Math.max(best, 100);
+      continue;
+    }
+
+    if (normalizedAnime.includes(normalizedJikan) || normalizedJikan.includes(normalizedAnime)) {
+      best = Math.max(best, 86);
+      continue;
+    }
+
+    const jikanTokens = new Set(normalizedJikan.split(" ").filter((token) => token.length >= 3));
+    const intersection = [...animeTokens].filter((token) => jikanTokens.has(token)).length;
+    const union = new Set([...animeTokens, ...jikanTokens]).size;
+
+    if (union > 0) {
+      const similarity = intersection / union;
+      best = Math.max(best, Math.round(similarity * 100));
+    }
+  }
+
+  if (best < 45) {
+    return 0;
+  }
+
+  return best;
 }
 
 function formatAiringAtLabel(airingAtUnix: number): string {
@@ -284,7 +309,7 @@ async function loadDashboardFeeds() {
         episode: item.episode,
         imageUrl: item.imageUrl,
         score: item.score,
-        validatedByJikan: hasJikanValidation(item.title, jikanTitles),
+        validationConfidence: getJikanValidationConfidence(item.title, jikanTitles),
         source: item.source,
       }));
       releaseLive = true;
@@ -297,7 +322,7 @@ async function loadDashboardFeeds() {
         episode: null,
         imageUrl: item.imageUrl,
         score: item.score,
-        validatedByJikan: false,
+        validationConfidence: 0,
         source: item.source,
       }));
       releaseLive = true;
@@ -503,13 +528,18 @@ export default async function Home({ searchParams }: HomePageProps) {
                   )}
                 </div>
                 <p className="line-clamp-2 text-sm font-semibold text-white">{item.title}</p>
-                <p className="mt-2 text-xs uppercase tracking-wider text-slate-400">{item.airingAt}</p>
+                {item.airingAtUnix ? (
+                  <AiringCountdown airingAtUnix={item.airingAtUnix} />
+                ) : (
+                  <p className="mt-2 text-xs uppercase tracking-wider text-slate-400">{item.airingAt}</p>
+                )}
                 {item.episode ? (
                   <p className="mt-1 text-[11px] uppercase tracking-wider text-cyan-300/80">ep {item.episode}</p>
                 ) : null}
-                <AiringCountdown airingAtUnix={item.airingAtUnix} />
                 <p className="mt-1 text-[11px] uppercase tracking-wider text-slate-500">
-                  {item.validatedByJikan ? "validado por jikan" : "sin validacion jikan"}
+                  {item.validationConfidence > 0
+                    ? `validacion jikan ${item.validationConfidence}%`
+                    : "sin validacion jikan"}
                 </p>
                 <p className="mt-2 text-xs text-slate-500">
                   {item.score ? `${item.score}/10` : "sin score"} - {item.source}

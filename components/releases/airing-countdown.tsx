@@ -22,12 +22,23 @@ function formatRemaining(secondsRemaining: number) {
 }
 
 export function AiringCountdown({ airingAtUnix }: AiringCountdownProps) {
-  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  const [now, setNow] = useState<number | null>(null);
+  const [localLabel, setLocalLabel] = useState<string | null>(null);
 
   useEffect(() => {
     if (!airingAtUnix) {
       return undefined;
     }
+
+    setNow(Math.floor(Date.now() / 1000));
+    setLocalLabel(
+      new Intl.DateTimeFormat(undefined, {
+        weekday: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZoneName: "short",
+      }).format(new Date(airingAtUnix * 1000)),
+    );
 
     const id = window.setInterval(() => {
       setNow(Math.floor(Date.now() / 1000));
@@ -37,24 +48,40 @@ export function AiringCountdown({ airingAtUnix }: AiringCountdownProps) {
   }, [airingAtUnix]);
 
   const remaining = useMemo(() => {
-    if (!airingAtUnix) {
+    if (!airingAtUnix || now === null) {
       return null;
     }
 
     return formatRemaining(airingAtUnix - now);
   }, [airingAtUnix, now]);
 
-  if (!remaining) {
+  if (!airingAtUnix) {
     return <p className="mt-2 text-[11px] uppercase tracking-wider text-slate-500">countdown tbd</p>;
   }
 
-  if (airingAtUnix <= now) {
-    return <p className="mt-2 text-[11px] uppercase tracking-wider text-emerald-300">emitiendo ahora</p>;
+  if (!remaining) {
+    return <p className="mt-2 text-[11px] uppercase tracking-wider text-slate-500">calculando countdown...</p>;
+  }
+
+  if (now !== null && airingAtUnix <= now) {
+    return (
+      <div className="mt-2 space-y-1">
+        <p className="text-[11px] uppercase tracking-wider text-emerald-300">emitiendo ahora</p>
+        {localLabel ? (
+          <p className="text-[11px] uppercase tracking-wider text-slate-400">local: {localLabel}</p>
+        ) : null}
+      </div>
+    );
   }
 
   return (
-    <p className="mt-2 text-[11px] uppercase tracking-wider text-cyan-300">
-      {remaining.days}d {remaining.hours}h {remaining.minutes}m {remaining.seconds}s
-    </p>
+    <div className="mt-2 space-y-1">
+      <p className="text-[11px] uppercase tracking-wider text-cyan-300">
+        {remaining.days}d {remaining.hours}h {remaining.minutes}m {remaining.seconds}s
+      </p>
+      {localLabel ? (
+        <p className="text-[11px] uppercase tracking-wider text-slate-400">local: {localLabel}</p>
+      ) : null}
+    </div>
   );
 }
