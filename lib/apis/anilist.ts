@@ -1,5 +1,9 @@
 import { env, isSmokeModeEnabled } from "@/lib/env";
-import { getSmokeAnimeDetail, getSmokeTrendingAnime } from "@/lib/smoke/fixtures";
+import {
+  getSmokeAnimeDetail,
+  getSmokeTrendingAnime,
+  getSmokeUpcomingAiringAnime,
+} from "@/lib/smoke/fixtures";
 
 export type AnimeFeedItem = {
   id: number;
@@ -7,6 +11,16 @@ export type AnimeFeedItem = {
   subtitle: string;
   imageUrl: string | null;
   score: number | null;
+  source: "AniList";
+};
+
+export type UpcomingAiringAnimeItem = {
+  id: number;
+  title: string;
+  imageUrl: string | null;
+  score: number | null;
+  episode: number | null;
+  airingAtUnix: number;
   source: "AniList";
 };
 
@@ -75,6 +89,10 @@ type AniListResponse = {
         format?: string | null;
         status?: string | null;
         seasonYear?: number | null;
+        nextAiringEpisode?: {
+          airingAt?: number | null;
+          episode?: number | null;
+        };
       }>;
     };
     Media?: {
@@ -187,6 +205,29 @@ const TRENDING_ANIME_QUERY = `
         format
         status
         seasonYear
+      }
+    }
+  }
+`;
+
+const UPCOMING_AIRING_QUERY = `
+  query UpcomingAiring($page: Int!, $perPage: Int!) {
+    Page(page: $page, perPage: $perPage) {
+      media(type: ANIME, status: RELEASING, sort: [POPULARITY_DESC], isAdult: false) {
+        id
+        title {
+          romaji
+          english
+        }
+        coverImage {
+          large
+          medium
+        }
+        averageScore
+        nextAiringEpisode {
+          airingAt
+          episode
+        }
       }
     }
   }
@@ -352,6 +393,62 @@ export async function getTrendingAnime(limit = 6): Promise<AnimeFeedItem[]> {
       source: "AniList" as const,
     };
   });
+}
+
+export async function getUpcomingAiringAnime(limit = 8): Promise<UpcomingAiringAnimeItem[]> {
+  if (isSmokeModeEnabled()) {
+    return getSmokeUpcomingAiringAnime(limit);
+  }
+
+  const response = await fetch(env.ANILIST_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      query: UPCOMING_AIRING_QUERY,
+      variables: {
+        page: 1,
+        perPage: limit,
+      },
+    }),
+    next: { revalidate: 900 },
+  });
+
+  if (!response.ok) {
+    throw new Error(`AniList HTTP ${response.status}`);
+  }
+
+  const data = (await response.json()) as AniListResponse;
+
+  if (data.errors?.length) {
+    throw new Error(data.errors[0]?.message ?? "AniList returned errors");
+  }
+
+  const media = data.data?.Page?.media ?? [];
+
+  return media
+    .filter((item) => item.nextAiringEpisode?.airingAt)
+    .map((item) => {
+      const title = item.title?.english || item.title?.romaji || "Untitled anime";
+      const score =
+        typeof item.averageScore === "number"
+          ? Math.round((item.averageScore / 10) * 10) / 10
+          : null;
+
+      return {
+        id: item.id,
+        title,
+        imageUrl: item.coverImage?.large || item.coverImage?.medium || null,
+        score,
+        episode: item.nextAiringEpisode?.episode ?? null,
+        airingAtUnix: item.nextAiringEpisode?.airingAt ?? 0,
+        source: "AniList" as const,
+      };
+    })
+    .filter((item) => item.airingAtUnix > 0)
+    .sort((a, b) => a.airingAtUnix - b.airingAtUnix)
+    .slice(0, limit);
 }
 
 export async function getAnimeById(id: number): Promise<AnimeDetail | null> {

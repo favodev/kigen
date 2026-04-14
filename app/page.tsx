@@ -1,8 +1,9 @@
 import Link from "next/link";
 
 import { addToLibrary, removeFromLibrary, updateLibraryEntry } from "@/app/library/actions";
+import { AiringCountdown } from "@/components/releases/airing-countdown";
 import { AppShell } from "@/components/shell/app-shell";
-import { getTrendingAnime } from "@/lib/apis/anilist";
+import { getTrendingAnime, getUpcomingAiringAnime } from "@/lib/apis/anilist";
 import { getTodayReleases } from "@/lib/apis/jikan";
 import { getTrendingManga } from "@/lib/apis/kitsu";
 import { getConnectionsHealth } from "@/lib/connections/health";
@@ -22,8 +23,11 @@ type ReleaseCardItem = {
   id: number;
   title: string;
   airingAt: string;
+  airingAtUnix: number | null;
+  episode: number | null;
   imageUrl: string | null;
   score: number | null;
+  validatedByJikan: boolean;
   source: string;
 };
 
@@ -176,27 +180,62 @@ function fallbackReleaseItems(): ReleaseCardItem[] {
       id: 1,
       title: "Neon Genesis Rebuild",
       airingAt: "04:30 PM JST",
+      airingAtUnix: null,
+      episode: null,
       imageUrl: null,
       score: 8.2,
+      validatedByJikan: false,
       source: "Fallback",
     },
     {
       id: 2,
       title: "Cyborg Protocol 7",
       airingAt: "09:15 PM JST",
+      airingAtUnix: null,
+      episode: null,
       imageUrl: null,
       score: 7.9,
+      validatedByJikan: false,
       source: "Fallback",
     },
     {
       id: 3,
       title: "Astral Blades",
       airingAt: "11:05 PM JST",
+      airingAtUnix: null,
+      episode: null,
       imageUrl: null,
       score: null,
+      validatedByJikan: false,
       source: "Fallback",
     },
   ];
+}
+
+function normalizeTitleForValidation(value: string): string {
+  return value.toLowerCase().replaceAll(/[^a-z0-9]+/g, " ").trim();
+}
+
+function hasJikanValidation(animeTitle: string, jikanTitles: string[]): boolean {
+  const normalizedAnime = normalizeTitleForValidation(animeTitle);
+
+  return jikanTitles.some((jikanTitle) => {
+    const normalizedJikan = normalizeTitleForValidation(jikanTitle);
+
+    if (normalizedAnime.length < 4 || normalizedJikan.length < 4) {
+      return false;
+    }
+
+    return normalizedAnime.includes(normalizedJikan) || normalizedJikan.includes(normalizedAnime);
+  });
+}
+
+function formatAiringAtLabel(airingAtUnix: number): string {
+  return new Date(airingAtUnix * 1000).toLocaleString("en-US", {
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 async function loadDashboardFeeds() {
@@ -230,10 +269,37 @@ async function loadDashboardFeeds() {
   }
 
   try {
-    const jikanReleases = await getTodayReleases(8);
+    const [anilistAiring, jikanReleases] = await Promise.all([
+      getUpcomingAiringAnime(8),
+      getTodayReleases(25),
+    ]);
 
-    if (jikanReleases.length > 0) {
-      releaseItems = jikanReleases;
+    if (anilistAiring.length > 0) {
+      const jikanTitles = jikanReleases.map((item) => item.title);
+      releaseItems = anilistAiring.map((item) => ({
+        id: item.id,
+        title: item.title,
+        airingAt: formatAiringAtLabel(item.airingAtUnix),
+        airingAtUnix: item.airingAtUnix,
+        episode: item.episode,
+        imageUrl: item.imageUrl,
+        score: item.score,
+        validatedByJikan: hasJikanValidation(item.title, jikanTitles),
+        source: item.source,
+      }));
+      releaseLive = true;
+    } else if (jikanReleases.length > 0) {
+      releaseItems = jikanReleases.map((item) => ({
+        id: item.id,
+        title: item.title,
+        airingAt: item.airingAt,
+        airingAtUnix: null,
+        episode: null,
+        imageUrl: item.imageUrl,
+        score: item.score,
+        validatedByJikan: false,
+        source: item.source,
+      }));
       releaseLive = true;
     }
   } catch {
@@ -422,7 +488,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                 feeds.releaseLive ? "text-emerald-300" : "text-amber-300"
               }`}
             >
-              {feeds.releaseLive ? "live jikan" : "fallback"}
+              {feeds.releaseLive ? "live anilist" : "fallback"}
             </span>
           </div>
 
@@ -438,6 +504,13 @@ export default async function Home({ searchParams }: HomePageProps) {
                 </div>
                 <p className="line-clamp-2 text-sm font-semibold text-white">{item.title}</p>
                 <p className="mt-2 text-xs uppercase tracking-wider text-slate-400">{item.airingAt}</p>
+                {item.episode ? (
+                  <p className="mt-1 text-[11px] uppercase tracking-wider text-cyan-300/80">ep {item.episode}</p>
+                ) : null}
+                <AiringCountdown airingAtUnix={item.airingAtUnix} />
+                <p className="mt-1 text-[11px] uppercase tracking-wider text-slate-500">
+                  {item.validatedByJikan ? "validado por jikan" : "sin validacion jikan"}
+                </p>
                 <p className="mt-2 text-xs text-slate-500">
                   {item.score ? `${item.score}/10` : "sin score"} - {item.source}
                 </p>

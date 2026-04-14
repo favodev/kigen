@@ -150,3 +150,28 @@ export function getSmokeTodayReleases(limit: number) {
     },
   ].slice(0, limit);
 }
+
+export function getSmokeUpcomingAiringAnime(limit: number) {
+  const now = Math.floor(Date.now() / 1000);
+
+  return [
+    {
+      id: 1,
+      title: "Smoke Anime One",
+      imageUrl: null,
+      score: 8.4,
+      episode: 6,
+      airingAtUnix: now + 60 * 60 * 2,
+      source: "AniList" as const,
+    },
+    {
+      id: 2,
+      title: "Smoke Anime Two",
+      imageUrl: null,
+      score: 7.8,
+      episode: 10,
+      airingAtUnix: now + 60 * 60 * 6,
+      source: "AniList" as const,
+    },
+  ].slice(0, limit);
+}
