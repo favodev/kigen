@@ -23,22 +23,11 @@ function formatRemaining(secondsRemaining: number) {
 
 export function AiringCountdown({ airingAtUnix }: AiringCountdownProps) {
   const [now, setNow] = useState<number | null>(null);
-  const [localLabel, setLocalLabel] = useState<string | null>(null);
 
   useEffect(() => {
     if (!airingAtUnix) {
       return undefined;
     }
-
-    setNow(Math.floor(Date.now() / 1000));
-    setLocalLabel(
-      new Intl.DateTimeFormat(undefined, {
-        weekday: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZoneName: "short",
-      }).format(new Date(airingAtUnix * 1000)),
-    );
 
     const id = window.setInterval(() => {
       setNow(Math.floor(Date.now() / 1000));
@@ -53,6 +42,19 @@ export function AiringCountdown({ airingAtUnix }: AiringCountdownProps) {
     }
 
     return formatRemaining(airingAtUnix - now);
+  }, [airingAtUnix, now]);
+
+  const localLabel = useMemo(() => {
+    if (!airingAtUnix || now === null) {
+      return null;
+    }
+
+    return new Intl.DateTimeFormat(undefined, {
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZoneName: "short",
+    }).format(new Date(airingAtUnix * 1000));
   }, [airingAtUnix, now]);
 
   if (!airingAtUnix) {
