@@ -16,6 +16,21 @@ test("home route renders dashboard", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Dashboard de Inicio" })).toBeVisible();
 });
 
+test("home today releases shows live status and countdown metadata", async ({ page }) => {
+  await page.goto("/");
+
+  const releasesSection = page.locator("article").filter({
+    has: page.getByRole("heading", { name: "Today Releases" }),
+  });
+
+  await expect(releasesSection.getByText("live anilist")).toBeVisible();
+
+  const firstCard = releasesSection.locator("ul > li").first();
+  await expect(firstCard).toContainText(/(calculando countdown\.\.\.|\d+d \d+h \d+m \d+s)/i);
+  await expect(firstCard).toContainText("local:");
+  await expect(firstCard).toContainText(/(validacion jikan \d+%|sin validacion jikan)/i);
+});
+
 test("home shows library saved banner", async ({ page }) => {
   await page.goto("/?library=saved");
   await expect(page.getByText("Library Saved")).toBeVisible();
