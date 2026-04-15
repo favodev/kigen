@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { addToLibrary, removeFromLibrary, updateLibraryEntry } from "@/app/library/actions";
 import { CoverImage } from "@/components/media/cover-image";
 import { AppShell } from "@/components/shell/app-shell";
-import { getMangaById } from "@/lib/apis/kitsu";
+import { getMangaById, type MangaDetail } from "@/lib/apis/kitsu";
+import type { UnifiedLibraryEntry, UnifiedLibraryRelatedEntry } from "@/lib/media/contracts";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type MangaDetailPageProps = {
@@ -17,11 +18,16 @@ type MangaDetailPageProps = {
   }>;
 };
 
-function recommendationReason(item: {
-  score: number | null;
-  subtype: string | null;
-  status: string | null;
-}, baseSubtype: string | null): string {
+type MangaRecommendationForReason = Pick<
+  MangaDetail["recommendations"][number],
+  "score" | "subtype" | "status"
+>;
+
+type MangaRelatedLibraryRow = UnifiedLibraryRelatedEntry & {
+  external_id: string;
+};
+
+function recommendationReason(item: MangaRecommendationForReason, baseSubtype: MangaDetail["subtype"]): string {
   const signals: string[] = [];
   let points = 16;
 
@@ -66,13 +72,8 @@ export default async function MangaDetailPage({ params, searchParams }: MangaDet
   } = await supabase.auth.getUser();
 
   let setupRequired = pageParams.setup === "required";
-  let libraryEntry: {
-    id: string;
-    status: string;
-    progress: number;
-    notes: string | null;
-  } | null = null;
-  const relatedLibraryMap = new Map<string, { id: string; status: string; progress: number }>();
+  let libraryEntry: UnifiedLibraryEntry | null = null;
+  const relatedLibraryMap = new Map<string, UnifiedLibraryRelatedEntry>();
 
   if (user && !setupRequired) {
     const { data, error } = await supabase
@@ -103,12 +104,7 @@ export default async function MangaDetailPage({ params, searchParams }: MangaDet
           .eq("source", "Kitsu")
           .in("external_id", relatedIds);
 
-        (relatedData ?? []).forEach((entry: {
-          id: string;
-          external_id: string;
-          status: string;
-          progress: number;
-        }) => {
+        (relatedData ?? []).forEach((entry: MangaRelatedLibraryRow) => {
           relatedLibraryMap.set(String(entry.external_id), {
             id: entry.id,
             status: entry.status,

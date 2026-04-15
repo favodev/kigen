@@ -20,6 +20,15 @@ export type UnifiedReleaseBase = {
   score: number | null;
 };
 
+export type UnifiedLibraryEntry = {
+  id: string;
+  status: string;
+  progress: number;
+  notes: string | null;
+};
+
+export type UnifiedLibraryRelatedEntry = Omit<UnifiedLibraryEntry, "notes">;
+
 export function normalizeStatusLabel(value: string | null | undefined, fallback = "Unknown"): string {
   if (!value) {
     return fallback;

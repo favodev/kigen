@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { addToLibrary, removeFromLibrary, updateLibraryEntry } from "@/app/library/actions";
 import { CoverImage } from "@/components/media/cover-image";
 import { AppShell } from "@/components/shell/app-shell";
-import { getAnimeById } from "@/lib/apis/anilist";
+import { getAnimeById, type AnimeDetail } from "@/lib/apis/anilist";
+import type { UnifiedLibraryEntry, UnifiedLibraryRelatedEntry } from "@/lib/media/contracts";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type AnimeDetailPageProps = {
@@ -17,11 +18,16 @@ type AnimeDetailPageProps = {
   }>;
 };
 
-function recommendationReason(item: {
-  rating: number | null;
-  genres: string[];
-  status: string | null;
-}, baseGenres: string[]): string {
+type AnimeRecommendationForReason = Pick<
+  AnimeDetail["recommendations"][number],
+  "rating" | "genres" | "status"
+>;
+
+type AnimeRelatedLibraryRow = UnifiedLibraryRelatedEntry & {
+  external_id: string;
+};
+
+function recommendationReason(item: AnimeRecommendationForReason, baseGenres: AnimeDetail["genres"]): string {
   const baseGenreSet = new Set(baseGenres.map((genre) => genre.toLowerCase()));
   const overlap = item.genres.filter((genre) => baseGenreSet.has(genre.toLowerCase()));
   const signals: string[] = [];
@@ -76,13 +82,8 @@ export default async function AnimeDetailPage({ params, searchParams }: AnimeDet
   } = await supabase.auth.getUser();
 
   let setupRequired = pageParams.setup === "required";
-  let libraryEntry: {
-    id: string;
-    status: string;
-    progress: number;
-    notes: string | null;
-  } | null = null;
-  const relatedLibraryMap = new Map<string, { id: string; status: string; progress: number }>();
+  let libraryEntry: UnifiedLibraryEntry | null = null;
+  const relatedLibraryMap = new Map<string, UnifiedLibraryRelatedEntry>();
 
   if (user && !setupRequired) {
     const { data, error } = await supabase
@@ -113,12 +114,7 @@ export default async function AnimeDetailPage({ params, searchParams }: AnimeDet
           .eq("source", "AniList")
           .in("external_id", relatedIds);
 
-        (relatedData ?? []).forEach((entry: {
-          id: string;
-          external_id: string;
-          status: string;
-          progress: number;
-        }) => {
+        (relatedData ?? []).forEach((entry: AnimeRelatedLibraryRow) => {
           relatedLibraryMap.set(String(entry.external_id), {
             id: entry.id,
             status: entry.status,
