@@ -182,6 +182,9 @@ export default async function ProfilePage() {
         <p className="mt-3 text-sm leading-6 text-slate-300">
           Base inicial de gamificacion activa: rank calculado por actividad real y logros progresivos.
         </p>
+        <p className="mt-2 text-xs uppercase tracking-wider text-slate-500">
+          persistencia rank: recalculo db (trigger + job horario)
+        </p>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-4">
           <div className="rounded-sm border border-white/10 bg-black/30 p-4">

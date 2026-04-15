@@ -65,6 +65,48 @@ export type Database = {
         }
         Relationships: []
       }
+      user_profile_stats: {
+        Row: {
+          achievements_unlocked: number
+          active_items: number
+          average_score: number | null
+          completed_items: number
+          dropped_items: number
+          rank_label: string
+          rank_points: number
+          total_items: number
+          total_progress: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          achievements_unlocked?: number
+          active_items?: number
+          average_score?: number | null
+          completed_items?: number
+          dropped_items?: number
+          rank_label?: string
+          rank_points?: number
+          total_items?: number
+          total_progress?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          achievements_unlocked?: number
+          active_items?: number
+          average_score?: number | null
+          completed_items?: number
+          dropped_items?: number
+          rank_label?: string
+          rank_points?: number
+          total_items?: number
+          total_progress?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
