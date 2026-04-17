@@ -197,7 +197,9 @@ test("dashboard quick actions redirect with success states", async ({ page }) =>
 test("login route renders auth page", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Iniciar sesion" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Enviar magic link" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Iniciar con email" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Crear cuenta" })).toBeVisible();
+  await expect(page.locator('input[name="password"]')).toBeVisible();
 });
 
 test("library route handles unauthenticated state", async ({ page }) => {

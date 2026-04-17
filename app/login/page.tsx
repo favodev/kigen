@@ -1,11 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { signInWithEmailWithNext } from "@/app/auth/actions";
+import { signInWithPasswordWithNext, signUpWithPasswordWithNext } from "@/app/auth/actions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-type LoginAuthError = "email_invalid" | "email_provider_not_enabled" | "email_signin_failed";
-type LoginAuthStatus = "magic_link_sent";
+type LoginAuthError =
+  | "email_invalid"
+  | "password_too_short"
+  | "invalid_credentials"
+  | "email_not_confirmed"
+  | "email_signup_failed"
+  | "email_signin_failed";
+type LoginAuthStatus = "signup_check_email";
 
 type LoginPageProps = {
   searchParams?: Promise<{
@@ -27,7 +33,10 @@ function sanitizeNextPath(nextPath: string | undefined): string {
 function parseAuthError(value: string | undefined): LoginAuthError | null {
   if (
     value === "email_invalid" ||
-    value === "email_provider_not_enabled" ||
+    value === "password_too_short" ||
+    value === "invalid_credentials" ||
+    value === "email_not_confirmed" ||
+    value === "email_signup_failed" ||
     value === "email_signin_failed"
   ) {
     return value;
@@ -37,7 +46,7 @@ function parseAuthError(value: string | undefined): LoginAuthError | null {
 }
 
 function parseAuthStatus(value: string | undefined): LoginAuthStatus | null {
-  if (value === "magic_link_sent") {
+  if (value === "signup_check_email") {
     return value;
   }
 
@@ -45,12 +54,24 @@ function parseAuthStatus(value: string | undefined): LoginAuthStatus | null {
 }
 
 function authErrorMessage(authError: LoginAuthError): string {
-  if (authError === "email_provider_not_enabled") {
-    return "El login por email no esta habilitado en Supabase. Activalo en Auth > Providers > Email.";
-  }
-
   if (authError === "email_invalid") {
     return "El email ingresado no es valido.";
+  }
+
+  if (authError === "password_too_short") {
+    return "La contrasena debe tener al menos 6 caracteres.";
+  }
+
+  if (authError === "invalid_credentials") {
+    return "Email o contrasena incorrectos.";
+  }
+
+  if (authError === "email_not_confirmed") {
+    return "Tu email no esta confirmado todavia. Revisa tu inbox y confirma la cuenta.";
+  }
+
+  if (authError === "email_signup_failed") {
+    return "No pudimos crear tu cuenta en este momento. Reintenta en unos segundos.";
   }
 
   return "No pudimos iniciar sesion por email en este momento. Reintenta en unos segundos.";
@@ -88,7 +109,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           Iniciar sesion
         </h1>
         <p className="mt-3 text-sm leading-6 text-slate-300">
-          Usa tu email para recibir un magic link y entrar a KIGEN.
+          Usa tu email y contrasena para entrar a KIGEN.
         </p>
 
         {authError ? (
@@ -97,14 +118,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </div>
         ) : null}
 
-        {authStatus === "magic_link_sent" ? (
+        {authStatus === "signup_check_email" ? (
           <div className="mt-4 rounded-sm border border-emerald-300/40 bg-emerald-300/10 p-3 text-xs leading-5 text-emerald-100">
-            Enviamos un link de acceso a {emailValue || "tu email"}. Revisa tambien spam/promociones.
+            Creamos tu cuenta para {emailValue || "tu email"}. Revisa tu inbox para confirmar el correo antes de iniciar sesion.
           </div>
         ) : null}
 
         <div className="mt-6 space-y-3">
-          <form action={signInWithEmailWithNext} className="space-y-3">
+          <form className="space-y-3">
             <input type="hidden" name="next" value={nextPath} />
             <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400">
               Email
@@ -117,12 +138,36 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               placeholder="tu@email.com"
               className="w-full rounded-sm border border-white/20 bg-black/20 px-3 py-3 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-500 focus:border-cyan-300/60"
             />
-            <button
-              type="submit"
-              className="w-full rounded-sm border border-cyan-300/40 px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-300/10"
-            >
-              Enviar magic link
-            </button>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400">
+              Contrasena
+            </label>
+            <input
+              type="password"
+              name="password"
+              required
+              minLength={6}
+              placeholder="Minimo 6 caracteres"
+              className="w-full rounded-sm border border-white/20 bg-black/20 px-3 py-3 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-500 focus:border-cyan-300/60"
+            />
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                formAction={signInWithPasswordWithNext}
+                type="submit"
+                className="w-full rounded-sm border border-cyan-300/40 px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-cyan-300 transition-colors hover:bg-cyan-300/10"
+              >
+                Iniciar con email
+              </button>
+              <button
+                formAction={signUpWithPasswordWithNext}
+                type="submit"
+                className="w-full rounded-sm border border-emerald-300/40 px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-emerald-300 transition-colors hover:bg-emerald-300/10"
+              >
+                Crear cuenta
+              </button>
+            </div>
+            <p className="text-[11px] leading-5 text-slate-400">
+              Si todavia no tenes cuenta, usa Crear cuenta con tu email y contrasena.
+            </p>
           </form>
         </div>
 
