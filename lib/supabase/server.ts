@@ -220,6 +220,34 @@ function createSmokeSupabaseClient(user: SmokeUser | null): SupabaseServerClient
           error: null,
         };
       },
+      async signInWithOtp() {
+        return {
+          data: {
+            user: null,
+            session: null,
+            messageId: "smoke-message-id",
+          },
+          error: null,
+        };
+      },
+      async verifyOtp() {
+        return {
+          data: {
+            user,
+            session: null,
+          },
+          error: null,
+        };
+      },
+      async exchangeCodeForSession() {
+        return {
+          data: {
+            user,
+            session: null,
+          },
+          error: null,
+        };
+      },
       async signOut() {
         return { error: null };
       },

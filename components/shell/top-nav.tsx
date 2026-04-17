@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { signInWithDiscord, signInWithGoogle, signOut } from "@/app/auth/actions";
+import { signOut } from "@/app/auth/actions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function TopNav() {
@@ -46,22 +46,6 @@ export async function TopNav() {
             >
               Login
             </Link>
-            <form action={signInWithGoogle}>
-              <button
-                type="submit"
-                className="rounded-sm border border-white/15 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-slate-300 transition-colors hover:border-cyan-300/50 hover:text-cyan-300"
-              >
-                Login Google
-              </button>
-            </form>
-            <form action={signInWithDiscord}>
-              <button
-                type="submit"
-                className="rounded-sm border border-white/15 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-slate-300 transition-colors hover:border-indigo-300/50 hover:text-indigo-300"
-              >
-                Login Discord
-              </button>
-            </form>
           </>
         )}
       </div>

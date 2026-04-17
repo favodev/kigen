@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-type OAuthProvider = "google" | "discord";
+type AuthErrorCode = "email_invalid" | "email_provider_not_enabled" | "email_signin_failed";
 
 function sanitizeNextPath(nextPath: string): string {
   if (!nextPath.startsWith("/")) {
@@ -29,24 +29,62 @@ async function getBaseUrl(): Promise<string> {
   return `${proto}://${host}`;
 }
 
-async function signInWithProvider(provider: OAuthProvider, nextPath: string) {
+function mapEmailErrorCode(message: string): AuthErrorCode {
+  const lowered = message.toLowerCase();
+
+  if (lowered.includes("email") && lowered.includes("disabled")) {
+    return "email_provider_not_enabled";
+  }
+
+  if (lowered.includes("invalid") && lowered.includes("email")) {
+    return "email_invalid";
+  }
+
+  return "email_signin_failed";
+}
+
+function redirectToLoginWithState(nextPath: string, state: { authError?: AuthErrorCode; authStatus?: string; email?: string }) {
+  const query = new URLSearchParams({ next: nextPath });
+
+  if (state.authError) {
+    query.set("authError", state.authError);
+  }
+
+  if (state.authStatus) {
+    query.set("authStatus", state.authStatus);
+  }
+
+  if (state.email) {
+    query.set("email", state.email);
+  }
+
+  redirect(`/login?${query.toString()}`);
+}
+
+async function signInWithEmail(email: string, nextPath: string) {
   const supabase = await createSupabaseServerClient();
   const baseUrl = await getBaseUrl();
   const safeNextPath = sanitizeNextPath(nextPath);
   const redirectTo = `${baseUrl}/auth/callback?next=${encodeURIComponent(safeNextPath)}`;
 
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider,
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
     options: {
-      redirectTo,
+      emailRedirectTo: redirectTo,
     },
   });
 
-  if (error || !data.url) {
-    redirect(`/?authError=${encodeURIComponent(error?.message ?? "oauth_start_failed")}`);
+  if (error) {
+    redirectToLoginWithState(safeNextPath, {
+      authError: mapEmailErrorCode(error.message ?? ""),
+      email,
+    });
   }
 
-  redirect(data.url);
+  redirectToLoginWithState(safeNextPath, {
+    authStatus: "magic_link_sent",
+    email,
+  });
 }
 
 function nextFromFormData(formData: FormData, fallback = "/"): string {
@@ -59,20 +97,27 @@ function nextFromFormData(formData: FormData, fallback = "/"): string {
   return sanitizeNextPath(candidate);
 }
 
-export async function signInWithGoogle() {
-  await signInWithProvider("google", "/");
+function emailFromFormData(formData: FormData): string {
+  const candidate = formData.get("email");
+  return typeof candidate === "string" ? candidate.trim().toLowerCase() : "";
 }
 
-export async function signInWithDiscord() {
-  await signInWithProvider("discord", "/");
+function isLikelyEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-export async function signInWithGoogleWithNext(formData: FormData) {
-  await signInWithProvider("google", nextFromFormData(formData));
-}
+export async function signInWithEmailWithNext(formData: FormData) {
+  const nextPath = nextFromFormData(formData);
+  const email = emailFromFormData(formData);
 
-export async function signInWithDiscordWithNext(formData: FormData) {
-  await signInWithProvider("discord", nextFromFormData(formData));
+  if (!isLikelyEmail(email)) {
+    redirectToLoginWithState(nextPath, {
+      authError: "email_invalid",
+      email,
+    });
+  }
+
+  await signInWithEmail(email, nextPath);
 }
 
 export async function signOut() {
