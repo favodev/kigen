@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievement_catalog: {
+        Row: {
+          created_at: string
+          description: string
+          key: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          key: string
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          key?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: []
+      }
       user_media_list: {
         Row: {
           created_at: string
@@ -64,6 +88,32 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_achievement_unlocks: {
+        Row: {
+          achievement_key: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          achievement_key: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          achievement_key?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievement_unlocks_achievement_key_fkey"
+            columns: ["achievement_key"]
+            isOneToOne: false
+            referencedRelation: "achievement_catalog"
+            referencedColumns: ["key"]
+          },
+        ]
       }
       user_profile_stats: {
         Row: {

@@ -4,7 +4,9 @@ import { AppShell } from "@/components/shell/app-shell";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+type AchievementCatalogRow = Tables<"achievement_catalog">;
 type UserProfileStatsRow = Tables<"user_profile_stats">;
+type UserAchievementUnlockRow = Tables<"user_achievement_unlocks">;
 
 type AchievementCard = {
   key: string;
@@ -12,7 +14,46 @@ type AchievementCard = {
   description: string;
   unlocked: boolean;
   progressText: string;
+  unlockedAtText: string | null;
 };
+
+type AchievementCatalogProjection = Pick<
+  AchievementCatalogRow,
+  "key" | "title" | "description" | "sort_order"
+>;
+
+const FALLBACK_ACHIEVEMENT_CATALOG: AchievementCatalogProjection[] = [
+  {
+    key: "first-entry",
+    title: "Primer Registro",
+    description: "Guarda tu primera obra en biblioteca.",
+    sort_order: 10,
+  },
+  {
+    key: "consistent-watcher",
+    title: "Consistencia",
+    description: "Mantener 3 obras en tracking activo.",
+    sort_order: 20,
+  },
+  {
+    key: "finisher",
+    title: "Finalizador",
+    description: "Completar 5 obras.",
+    sort_order: 30,
+  },
+  {
+    key: "burn-and-recover",
+    title: "Reintento",
+    description: "Registrar 2 obras como DROPPED para recalibrar backlog.",
+    sort_order: 40,
+  },
+  {
+    key: "rated-curator",
+    title: "Curador",
+    description: "Cargar score promedio para afinar recomendaciones.",
+    sort_order: 50,
+  },
+];
 
 function rankColorFromLabel(label: string) {
   if (label === "Celestial Archivist") {
@@ -45,46 +86,72 @@ function formatUpdatedAt(value: string): string {
   }).format(new Date(value));
 }
 
-function buildAchievements(stats: UserProfileStatsRow): AchievementCard[] {
-  const hasAverage = typeof stats.average_score === "number";
+function formatUnlockedAt(value: string): string {
+  return new Intl.DateTimeFormat("es-AR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
 
-  return [
-    {
-      key: "first-entry",
-      title: "Primer Registro",
-      description: "Guarda tu primera obra en biblioteca.",
-      unlocked: stats.total_items >= 1,
-      progressText: `${Math.min(stats.total_items, 1)}/1`,
-    },
-    {
-      key: "consistent-watcher",
-      title: "Consistencia",
-      description: "Mantener 3 obras en tracking activo.",
-      unlocked: stats.active_items >= 3,
-      progressText: `${Math.min(stats.active_items, 3)}/3`,
-    },
-    {
-      key: "finisher",
-      title: "Finalizador",
-      description: "Completar 5 obras.",
-      unlocked: stats.completed_items >= 5,
-      progressText: `${Math.min(stats.completed_items, 5)}/5`,
-    },
-    {
-      key: "burn-and-recover",
-      title: "Reintento",
-      description: "Registrar 2 obras como DROPPED para recalibrar backlog.",
-      unlocked: stats.dropped_items >= 2,
-      progressText: `${Math.min(stats.dropped_items, 2)}/2`,
-    },
-    {
-      key: "rated-curator",
-      title: "Curador",
-      description: "Cargar score promedio para afinar recomendaciones.",
-      unlocked: hasAverage,
-      progressText: hasAverage ? "1/1" : "0/1",
-    },
-  ];
+function progressTextFromStats(key: string, stats: UserProfileStatsRow): string {
+  switch (key) {
+    case "first-entry":
+      return `${Math.min(stats.total_items, 1)}/1`;
+    case "consistent-watcher":
+      return `${Math.min(stats.active_items, 3)}/3`;
+    case "finisher":
+      return `${Math.min(stats.completed_items, 5)}/5`;
+    case "burn-and-recover":
+      return `${Math.min(stats.dropped_items, 2)}/2`;
+    case "rated-curator":
+      return typeof stats.average_score === "number" ? "1/1" : "0/1";
+    default:
+      return "n/a";
+  }
+}
+
+function deriveUnlockedAchievementKeys(stats: UserProfileStatsRow): Set<string> {
+  const keys = new Set<string>();
+
+  if (stats.total_items >= 1) {
+    keys.add("first-entry");
+  }
+
+  if (stats.active_items >= 3) {
+    keys.add("consistent-watcher");
+  }
+
+  if (stats.completed_items >= 5) {
+    keys.add("finisher");
+  }
+
+  if (stats.dropped_items >= 2) {
+    keys.add("burn-and-recover");
+  }
+
+  if (typeof stats.average_score === "number") {
+    keys.add("rated-curator");
+  }
+
+  return keys;
+}
+
+function buildAchievements(
+  achievementCatalog: AchievementCatalogProjection[],
+  unlockedKeys: Set<string>,
+  unlockedAtByKey: Map<string, string>,
+  stats: UserProfileStatsRow,
+): AchievementCard[] {
+  return achievementCatalog.map((achievement) => ({
+    key: achievement.key,
+    title: achievement.title,
+    description: achievement.description,
+    unlocked: unlockedKeys.has(achievement.key),
+    progressText: progressTextFromStats(achievement.key, stats),
+    unlockedAtText: unlockedAtByKey.has(achievement.key)
+      ? formatUnlockedAt(unlockedAtByKey.get(achievement.key) as string)
+      : null,
+  }));
 }
 
 export default async function ProfilePage() {
@@ -167,7 +234,35 @@ export default async function ProfilePage() {
     };
 
   const rankColor = rankColorFromLabel(profileStats.rank_label);
-  const achievements = buildAchievements(profileStats);
+
+  const { data: achievementCatalogData, error: achievementCatalogError } = await supabase
+    .from("achievement_catalog")
+    .select("key, title, description, sort_order")
+    .order("sort_order", { ascending: true });
+
+  const achievementCatalog =
+    achievementCatalogError?.code === "42P01" || !achievementCatalogData || achievementCatalogData.length === 0
+      ? FALLBACK_ACHIEVEMENT_CATALOG
+      : (achievementCatalogData as AchievementCatalogProjection[]);
+
+  const { data: unlockedRows, error: unlockedRowsError } = await supabase
+    .from("user_achievement_unlocks")
+    .select("achievement_key, unlocked_at")
+    .eq("user_id", user.id);
+
+  const unlockedAtByKey = new Map(
+    (unlockedRows ?? []).map((entry) => {
+      const row = entry as UserAchievementUnlockRow;
+      return [row.achievement_key, row.unlocked_at] as const;
+    }),
+  );
+  const unlockedKeysFromTable = new Set(
+    (unlockedRows ?? []).map((entry) => (entry as UserAchievementUnlockRow).achievement_key),
+  );
+  const unlockedKeys =
+    unlockedRowsError?.code === "42P01" ? deriveUnlockedAchievementKeys(profileStats) : unlockedKeysFromTable;
+  const achievements = buildAchievements(achievementCatalog, unlockedKeys, unlockedAtByKey, profileStats);
+  const unlockedCount = unlockedKeys.size;
 
   return (
     <AppShell>
@@ -222,7 +317,7 @@ export default async function ProfilePage() {
 
         <section className="mt-6">
           <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300/80">
-            Logros Base ({profileStats.achievements_unlocked}/{achievements.length})
+            Logros Base ({unlockedCount}/{achievements.length})
           </p>
           <ul className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {achievements.map((achievement) => (
@@ -246,6 +341,11 @@ export default async function ProfilePage() {
                 <p className="mt-2 text-[11px] uppercase tracking-widest text-slate-500">
                   progreso: {achievement.progressText}
                 </p>
+                {achievement.unlockedAtText ? (
+                  <p className="mt-1 text-[11px] uppercase tracking-widest text-emerald-200/80">
+                    desbloqueado: {achievement.unlockedAtText}
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>
