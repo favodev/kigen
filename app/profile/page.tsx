@@ -1,17 +1,10 @@
 import Link from "next/link";
 
 import { AppShell } from "@/components/shell/app-shell";
+import type { Tables } from "@/lib/supabase/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-type LibraryProfileRow = {
-  id: string;
-  source: string;
-  media_kind: string;
-  status: string;
-  progress: number;
-  score: number | null;
-  notes: string | null;
-};
+type UserProfileStatsRow = Tables<"user_profile_stats">;
 
 type AchievementCard = {
   key: string;
@@ -21,68 +14,75 @@ type AchievementCard = {
   progressText: string;
 };
 
-function rankFromPoints(points: number) {
-  if (points >= 900) {
-    return { label: "Celestial Archivist", color: "text-fuchsia-300" };
+function rankColorFromLabel(label: string) {
+  if (label === "Celestial Archivist") {
+    return "text-fuchsia-300";
   }
 
-  if (points >= 650) {
-    return { label: "Mythic Curator", color: "text-violet-300" };
+  if (label === "Mythic Curator") {
+    return "text-violet-300";
   }
 
-  if (points >= 420) {
-    return { label: "Signal Keeper", color: "text-cyan-300" };
+  if (label === "Signal Keeper") {
+    return "text-cyan-300";
   }
 
-  if (points >= 220) {
-    return { label: "Archive Scout", color: "text-emerald-300" };
+  if (label === "Archive Scout") {
+    return "text-emerald-300";
   }
 
-  return { label: "Rookie Tracker", color: "text-amber-300" };
+  return "text-amber-300";
 }
 
-function buildAchievements(entries: LibraryProfileRow[]): AchievementCard[] {
-  const total = entries.length;
-  const completed = entries.filter((entry) => entry.status === "COMPLETED").length;
-  const active = entries.filter((entry) => entry.status === "WATCHING" || entry.status === "READING").length;
-  const withNotes = entries.filter((entry) => (entry.notes ?? "").trim().length > 0).length;
-  const sources = new Set(entries.map((entry) => entry.source)).size;
+function formatUpdatedAt(value: string): string {
+  if (!value) {
+    return "pendiente";
+  }
+
+  return new Intl.DateTimeFormat("es-AR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function buildAchievements(stats: UserProfileStatsRow): AchievementCard[] {
+  const hasAverage = typeof stats.average_score === "number";
 
   return [
     {
       key: "first-entry",
       title: "Primer Registro",
       description: "Guarda tu primera obra en biblioteca.",
-      unlocked: total >= 1,
-      progressText: `${Math.min(total, 1)}/1`,
+      unlocked: stats.total_items >= 1,
+      progressText: `${Math.min(stats.total_items, 1)}/1`,
     },
     {
       key: "consistent-watcher",
       title: "Consistencia",
       description: "Mantener 3 obras en tracking activo.",
-      unlocked: active >= 3,
-      progressText: `${Math.min(active, 3)}/3`,
+      unlocked: stats.active_items >= 3,
+      progressText: `${Math.min(stats.active_items, 3)}/3`,
     },
     {
       key: "finisher",
       title: "Finalizador",
       description: "Completar 5 obras.",
-      unlocked: completed >= 5,
-      progressText: `${Math.min(completed, 5)}/5`,
+      unlocked: stats.completed_items >= 5,
+      progressText: `${Math.min(stats.completed_items, 5)}/5`,
     },
     {
-      key: "cross-source",
-      title: "Multifuente",
-      description: "Trackear obras de 2 fuentes distintas.",
-      unlocked: sources >= 2,
-      progressText: `${Math.min(sources, 2)}/2`,
+      key: "burn-and-recover",
+      title: "Reintento",
+      description: "Registrar 2 obras como DROPPED para recalibrar backlog.",
+      unlocked: stats.dropped_items >= 2,
+      progressText: `${Math.min(stats.dropped_items, 2)}/2`,
     },
     {
-      key: "critic",
-      title: "Critico",
-      description: "Registrar notas privadas en 5 obras.",
-      unlocked: withNotes >= 5,
-      progressText: `${Math.min(withNotes, 5)}/5`,
+      key: "rated-curator",
+      title: "Curador",
+      description: "Cargar score promedio para afinar recomendaciones.",
+      unlocked: hasAverage,
+      progressText: hasAverage ? "1/1" : "0/1",
     },
   ];
 }
@@ -124,10 +124,12 @@ export default async function ProfilePage() {
   }
 
   const { data, error } = await supabase
-    .from("user_media_list")
-    .select("id, source, media_kind, status, progress, score, notes")
+    .from("user_profile_stats")
+    .select(
+      "user_id, rank_points, rank_label, total_items, completed_items, active_items, dropped_items, total_progress, average_score, achievements_unlocked, updated_at",
+    )
     .eq("user_id", user.id)
-    .limit(1000);
+    .maybeSingle();
 
   if (error?.code === "42P01") {
     return (
@@ -141,36 +143,31 @@ export default async function ProfilePage() {
             Aplica migraciones de Supabase para habilitar el calculo de rank y logros.
           </p>
           <p className="mt-2 text-xs text-slate-400">
-            Archivo clave: supabase/migrations/20260410122000_create_user_media_list.sql
+            Archivos clave: 20260415091500_create_user_profile_stats.sql y 20260415184500_refresh_user_profile_stats_job.sql
           </p>
         </section>
       </AppShell>
     );
   }
 
-  const entries = (data ?? []) as LibraryProfileRow[];
-  const total = entries.length;
-  const completed = entries.filter((entry) => entry.status === "COMPLETED").length;
-  const active = entries.filter((entry) => entry.status === "WATCHING" || entry.status === "READING").length;
-  const dropped = entries.filter((entry) => entry.status === "DROPPED").length;
-  const totalProgress = entries.reduce((acc, entry) => acc + (entry.progress ?? 0), 0);
-  const scoredEntries = entries.filter((entry) => typeof entry.score === "number");
-  const averageScore =
-    scoredEntries.length > 0
-      ? Math.round(
-          (scoredEntries.reduce((acc, entry) => acc + (entry.score ?? 0), 0) / scoredEntries.length) * 10,
-        ) / 10
-      : null;
+  const hasSnapshot = Boolean(data);
+  const profileStats: UserProfileStatsRow =
+    data ?? {
+      user_id: user.id,
+      rank_points: 0,
+      rank_label: "Rookie Tracker",
+      total_items: 0,
+      completed_items: 0,
+      active_items: 0,
+      dropped_items: 0,
+      total_progress: 0,
+      average_score: null,
+      achievements_unlocked: 0,
+      updated_at: new Date(0).toISOString(),
+    };
 
-  const points =
-    completed * 40 +
-    active * 22 +
-    Math.min(240, totalProgress) +
-    (averageScore ? Math.round(averageScore * 8) : 0) -
-    dropped * 5;
-
-  const rank = rankFromPoints(Math.max(0, points));
-  const achievements = buildAchievements(entries);
+  const rankColor = rankColorFromLabel(profileStats.rank_label);
+  const achievements = buildAchievements(profileStats);
 
   return (
     <AppShell>
@@ -183,26 +180,27 @@ export default async function ProfilePage() {
           Base inicial de gamificacion activa: rank calculado por actividad real y logros progresivos.
         </p>
         <p className="mt-2 text-xs uppercase tracking-wider text-slate-500">
-          persistencia rank: recalculo db (trigger + job horario)
+          persistencia rank: recalculo db (trigger + job horario){" "}
+          {hasSnapshot ? `(actualizado ${formatUpdatedAt(profileStats.updated_at)})` : "(snapshot pendiente)"}
         </p>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-4">
           <div className="rounded-sm border border-white/10 bg-black/30 p-4">
             <p className="text-[11px] uppercase tracking-widest text-slate-400">Watcher Rank</p>
-            <p className={`mt-1 font-headline text-xl font-black ${rank.color}`}>{rank.label}</p>
-            <p className="mt-1 text-xs text-slate-500">{Math.max(0, points)} pts</p>
+            <p className={`mt-1 font-headline text-xl font-black ${rankColor}`}>{profileStats.rank_label}</p>
+            <p className="mt-1 text-xs text-slate-500">{profileStats.rank_points} pts</p>
           </div>
           <div className="rounded-sm border border-white/10 bg-black/30 p-4">
             <p className="text-[11px] uppercase tracking-widest text-slate-400">Items</p>
-            <p className="mt-1 font-headline text-xl font-black text-white">{total}</p>
+            <p className="mt-1 font-headline text-xl font-black text-white">{profileStats.total_items}</p>
           </div>
           <div className="rounded-sm border border-white/10 bg-black/30 p-4">
             <p className="text-[11px] uppercase tracking-widest text-slate-400">Completados</p>
-            <p className="mt-1 font-headline text-xl font-black text-emerald-300">{completed}</p>
+            <p className="mt-1 font-headline text-xl font-black text-emerald-300">{profileStats.completed_items}</p>
           </div>
           <div className="rounded-sm border border-white/10 bg-black/30 p-4">
             <p className="text-[11px] uppercase tracking-widest text-slate-400">En progreso</p>
-            <p className="mt-1 font-headline text-xl font-black text-cyan-300">{active}</p>
+            <p className="mt-1 font-headline text-xl font-black text-cyan-300">{profileStats.active_items}</p>
           </div>
         </div>
 
@@ -210,19 +208,22 @@ export default async function ProfilePage() {
           <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300/80">Resumen</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             <p className="text-xs uppercase tracking-wider text-slate-400">
-              Progreso acumulado: <span className="text-slate-200">{totalProgress}</span>
+              Progreso acumulado: <span className="text-slate-200">{profileStats.total_progress}</span>
             </p>
             <p className="text-xs uppercase tracking-wider text-slate-400">
-              Dropped: <span className="text-slate-200">{dropped}</span>
+              Dropped: <span className="text-slate-200">{profileStats.dropped_items}</span>
             </p>
             <p className="text-xs uppercase tracking-wider text-slate-400">
-              Score promedio: <span className="text-slate-200">{averageScore ? `${averageScore}/10` : "n/a"}</span>
+              Score promedio:{" "}
+              <span className="text-slate-200">{profileStats.average_score ? `${profileStats.average_score}/10` : "n/a"}</span>
             </p>
           </div>
         </div>
 
         <section className="mt-6">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300/80">Logros Base</p>
+          <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-300/80">
+            Logros Base ({profileStats.achievements_unlocked}/{achievements.length})
+          </p>
           <ul className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {achievements.map((achievement) => (
               <li
