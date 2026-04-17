@@ -197,11 +197,27 @@ test("dashboard quick actions redirect with success states", async ({ page }) =>
 test("login route renders auth page", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Iniciar sesion" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Enviar magic link" })).toBeVisible();
 });
 
 test("library route handles unauthenticated state", async ({ page }) => {
   await page.goto("/library");
   await expect(page.getByRole("heading", { name: "Inicia sesion para ver tu biblioteca" })).toBeVisible();
+});
+
+test("profile route renders authenticated state in smoke auth", async ({ page }) => {
+  await enableSmokeAuth(page);
+  await page.goto("/profile");
+
+  await expect(page.getByRole("heading", { name: "Perfil de usuario" })).toBeVisible();
+  await expect(page.getByText("persistencia rank: recalculo db (trigger + job horario)")).toBeVisible();
+  await expect(page.getByText("(snapshot pendiente)")).toBeVisible();
+  await expect(page.getByText("Logros Base (0/5)")).toBeVisible();
+});
+
+test("profile route handles unauthenticated state", async ({ page }) => {
+  await page.goto("/profile");
+  await expect(page.getByRole("heading", { name: "Inicia sesion para ver tu Watcher Rank" })).toBeVisible();
 });
 
 test("invalid anime detail returns not-found status", async ({ request }) => {
