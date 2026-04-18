@@ -11,9 +11,11 @@ type AuthErrorCode =
   | "invalid_credentials"
   | "email_not_confirmed"
   | "email_signup_failed"
-  | "email_signin_failed";
+  | "email_signin_failed"
+  | "email_recovery_failed"
+  | "password_update_failed";
 
-type AuthStatusCode = "signup_check_email";
+type AuthStatusCode = "signup_check_email" | "password_reset_email_sent" | "password_updated";
 
 function sanitizeNextPath(nextPath: string): string {
   if (!nextPath.startsWith("/")) {
@@ -37,7 +39,10 @@ async function getBaseUrl(): Promise<string> {
   return `${proto}://${host}`;
 }
 
-function mapAuthErrorCode(message: string, flow: "signin" | "signup"): AuthErrorCode {
+function mapAuthErrorCode(
+  message: string,
+  flow: "signin" | "signup" | "recovery" | "update_password",
+): AuthErrorCode {
   const lowered = message.toLowerCase();
 
   if (lowered.includes("invalid") && lowered.includes("email")) {
@@ -60,6 +65,14 @@ function mapAuthErrorCode(message: string, flow: "signin" | "signup"): AuthError
     return "email_signup_failed";
   }
 
+  if (flow === "recovery") {
+    return "email_recovery_failed";
+  }
+
+  if (flow === "update_password") {
+    return "password_update_failed";
+  }
+
   return "email_signin_failed";
 }
 
@@ -79,6 +92,16 @@ function redirectToLoginWithState(nextPath: string, state: { authError?: AuthErr
   }
 
   redirect(`/login?${query.toString()}`);
+}
+
+function redirectToResetPasswordWithState(nextPath: string, state: { authError?: AuthErrorCode }) {
+  const query = new URLSearchParams({ next: nextPath });
+
+  if (state.authError) {
+    query.set("authError", state.authError);
+  }
+
+  redirect(`/reset-password?${query.toString()}`);
 }
 
 async function signInWithPassword(email: string, password: string, nextPath: string) {
@@ -128,6 +151,51 @@ async function signUpWithPassword(email: string, password: string, nextPath: str
   redirectToLoginWithState(safeNextPath, {
     authStatus: "signup_check_email",
     email,
+  });
+}
+
+async function requestPasswordReset(email: string, nextPath: string) {
+  const supabase = await createSupabaseServerClient();
+  const baseUrl = await getBaseUrl();
+  const safeNextPath = sanitizeNextPath(nextPath);
+  const resetPath = `/reset-password?next=${encodeURIComponent(safeNextPath)}`;
+  const redirectTo = `${baseUrl}/auth/callback?next=${encodeURIComponent(resetPath)}`;
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  });
+
+  if (error) {
+    redirectToLoginWithState(safeNextPath, {
+      authError: mapAuthErrorCode(error.message ?? "", "recovery"),
+      email,
+    });
+  }
+
+  redirectToLoginWithState(safeNextPath, {
+    authStatus: "password_reset_email_sent",
+    email,
+  });
+}
+
+async function updatePasswordAfterRecovery(password: string, nextPath: string) {
+  const supabase = await createSupabaseServerClient();
+  const safeNextPath = sanitizeNextPath(nextPath);
+
+  const { error } = await supabase.auth.updateUser({
+    password,
+  });
+
+  if (error) {
+    redirectToResetPasswordWithState(safeNextPath, {
+      authError: mapAuthErrorCode(error.message ?? "", "update_password"),
+    });
+  }
+
+  await supabase.auth.signOut();
+
+  redirectToLoginWithState(safeNextPath, {
+    authStatus: "password_updated",
   });
 }
 
@@ -201,6 +269,33 @@ export async function signUpWithPasswordWithNext(formData: FormData) {
   }
 
   await signUpWithPassword(email, password, nextPath);
+}
+
+export async function requestPasswordResetWithNext(formData: FormData) {
+  const nextPath = nextFromFormData(formData);
+  const email = emailFromFormData(formData);
+
+  if (!isLikelyEmail(email)) {
+    redirectToLoginWithState(nextPath, {
+      authError: "email_invalid",
+      email,
+    });
+  }
+
+  await requestPasswordReset(email, nextPath);
+}
+
+export async function updatePasswordAfterRecoveryWithNext(formData: FormData) {
+  const nextPath = nextFromFormData(formData);
+  const password = passwordFromFormData(formData);
+
+  if (!isLikelyPassword(password)) {
+    redirectToResetPasswordWithState(nextPath, {
+      authError: "password_too_short",
+    });
+  }
+
+  await updatePasswordAfterRecovery(password, nextPath);
 }
 
 export async function signOut() {

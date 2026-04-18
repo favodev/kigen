@@ -199,7 +199,23 @@ test("login route renders auth page", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Iniciar sesion" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Iniciar con email" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Crear cuenta" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Enviar email de recuperacion" })).toBeVisible();
   await expect(page.locator('input[name="password"]')).toBeVisible();
+});
+
+test("reset password route renders authenticated state in smoke auth", async ({ page }) => {
+  await enableSmokeAuth(page);
+  await page.goto("/reset-password");
+
+  await expect(page.getByRole("heading", { name: "Definir nueva contrasena" })).toBeVisible();
+  await expect(page.locator('input[name="password"]')).toBeVisible();
+  await expect(page.getByRole("button", { name: "Guardar nueva contrasena" })).toBeVisible();
+});
+
+test("reset password route handles unauthenticated state", async ({ page }) => {
+  await page.goto("/reset-password");
+  await expect(page.getByRole("heading", { name: "Restablecer contrasena" })).toBeVisible();
+  await expect(page.getByText("abre el enlace de recuperacion desde tu email")).toBeVisible();
 });
 
 test("library route handles unauthenticated state", async ({ page }) => {

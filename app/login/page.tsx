@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { signInWithPasswordWithNext, signUpWithPasswordWithNext } from "@/app/auth/actions";
+import {
+  requestPasswordResetWithNext,
+  signInWithPasswordWithNext,
+  signUpWithPasswordWithNext,
+} from "@/app/auth/actions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 type LoginAuthError =
@@ -10,8 +14,9 @@ type LoginAuthError =
   | "invalid_credentials"
   | "email_not_confirmed"
   | "email_signup_failed"
-  | "email_signin_failed";
-type LoginAuthStatus = "signup_check_email";
+  | "email_signin_failed"
+  | "email_recovery_failed";
+type LoginAuthStatus = "signup_check_email" | "password_reset_email_sent" | "password_updated";
 
 type LoginPageProps = {
   searchParams?: Promise<{
@@ -37,7 +42,8 @@ function parseAuthError(value: string | undefined): LoginAuthError | null {
     value === "invalid_credentials" ||
     value === "email_not_confirmed" ||
     value === "email_signup_failed" ||
-    value === "email_signin_failed"
+    value === "email_signin_failed" ||
+    value === "email_recovery_failed"
   ) {
     return value;
   }
@@ -46,7 +52,11 @@ function parseAuthError(value: string | undefined): LoginAuthError | null {
 }
 
 function parseAuthStatus(value: string | undefined): LoginAuthStatus | null {
-  if (value === "signup_check_email") {
+  if (
+    value === "signup_check_email" ||
+    value === "password_reset_email_sent" ||
+    value === "password_updated"
+  ) {
     return value;
   }
 
@@ -72,6 +82,10 @@ function authErrorMessage(authError: LoginAuthError): string {
 
   if (authError === "email_signup_failed") {
     return "No pudimos crear tu cuenta en este momento. Reintenta en unos segundos.";
+  }
+
+  if (authError === "email_recovery_failed") {
+    return "No pudimos enviar el email de recuperacion en este momento. Reintenta en unos segundos.";
   }
 
   return "No pudimos iniciar sesion por email en este momento. Reintenta en unos segundos.";
@@ -124,6 +138,18 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </div>
         ) : null}
 
+        {authStatus === "password_reset_email_sent" ? (
+          <div className="mt-4 rounded-sm border border-emerald-300/40 bg-emerald-300/10 p-3 text-xs leading-5 text-emerald-100">
+            Enviamos el email de recuperacion a {emailValue || "tu email"}. Revisa inbox y spam/promociones.
+          </div>
+        ) : null}
+
+        {authStatus === "password_updated" ? (
+          <div className="mt-4 rounded-sm border border-emerald-300/40 bg-emerald-300/10 p-3 text-xs leading-5 text-emerald-100">
+            Contrasena actualizada. Inicia sesion con tu nueva credencial.
+          </div>
+        ) : null}
+
         <div className="mt-6 space-y-3">
           <form className="space-y-3">
             <input type="hidden" name="next" value={nextPath} />
@@ -168,6 +194,27 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <p className="text-[11px] leading-5 text-slate-400">
               Si todavia no tenes cuenta, usa Crear cuenta con tu email y contrasena.
             </p>
+          </form>
+
+          <form action={requestPasswordResetWithNext} className="space-y-3 rounded-sm border border-white/10 p-3">
+            <input type="hidden" name="next" value={nextPath} />
+            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+              Recuperar acceso
+            </p>
+            <input
+              type="email"
+              name="email"
+              required
+              defaultValue={emailValue}
+              placeholder="tu@email.com"
+              className="w-full rounded-sm border border-white/20 bg-black/20 px-3 py-3 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-500 focus:border-cyan-300/60"
+            />
+            <button
+              type="submit"
+              className="w-full rounded-sm border border-violet-300/40 px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-violet-300 transition-colors hover:bg-violet-300/10"
+            >
+              Enviar email de recuperacion
+            </button>
           </form>
         </div>
 

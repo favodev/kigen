@@ -6,11 +6,11 @@ export default function AuthCodeErrorPage() {
       <section className="obsidian-card w-full max-w-md rounded-sm p-6">
         <p className="text-[11px] uppercase tracking-[0.2em] text-rose-300">Auth Error</p>
         <h1 className="mt-2 font-headline text-3xl font-black tracking-tight text-white">
-          No se pudo iniciar sesion
+          No se pudo completar la verificacion
         </h1>
         <p className="mt-3 text-sm leading-6 text-slate-300">
-          Fallo el intercambio del codigo OAuth. Reintenta el login y verifica que el redirect
-          URI del proveedor coincida con el de Supabase.
+          El enlace de confirmacion o recuperacion puede estar vencido, incompleto o ya usado.
+          Reintenta desde login para generar uno nuevo.
         </p>
 
         <Link

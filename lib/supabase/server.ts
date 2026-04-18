@@ -239,6 +239,20 @@ function createSmokeSupabaseClient(user: SmokeUser | null): SupabaseServerClient
           error: null,
         };
       },
+      async resetPasswordForEmail() {
+        return {
+          data: {},
+          error: null,
+        };
+      },
+      async updateUser() {
+        return {
+          data: {
+            user,
+          },
+          error: null,
+        };
+      },
       async signInWithOtp() {
         return {
           data: {
