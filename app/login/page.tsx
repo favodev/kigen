@@ -138,6 +138,30 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           Usa tu email y contrasena para entrar a KIGEN.
         </p>
 
+        <div className="mt-4 rounded-sm border border-cyan-300/20 bg-cyan-300/5 p-3">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-cyan-200">
+            Modo activo
+          </p>
+          <p className="mt-1 text-xs leading-5 text-slate-300">
+            Auth por email + contrasena, con confirmacion de cuenta y recuperacion integrada.
+          </p>
+        </div>
+
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          <article className="rounded-sm border border-white/10 bg-black/20 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-200">Paso 1</p>
+            <p className="mt-1 text-[11px] leading-5 text-slate-300">Crea cuenta con email y contrasena.</p>
+          </article>
+          <article className="rounded-sm border border-white/10 bg-black/20 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-200">Paso 2</p>
+            <p className="mt-1 text-[11px] leading-5 text-slate-300">Confirma tu email desde el enlace recibido.</p>
+          </article>
+          <article className="rounded-sm border border-white/10 bg-black/20 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-violet-200">Paso 3</p>
+            <p className="mt-1 text-[11px] leading-5 text-slate-300">Inicia sesion o recupera acceso desde aqui.</p>
+          </article>
+        </div>
+
         {authError ? (
           <div className="mt-4 rounded-sm border border-amber-300/40 bg-amber-300/10 p-3 text-xs leading-5 text-amber-100">
             {authErrorMessage(authError)}

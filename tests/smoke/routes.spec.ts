@@ -197,6 +197,11 @@ test("dashboard quick actions redirect with success states", async ({ page }) =>
 test("login route renders auth page", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Iniciar sesion" })).toBeVisible();
+  await expect(page.getByText("Modo activo")).toBeVisible();
+  await expect(page.getByText("Auth por email + contrasena")).toBeVisible();
+  await expect(page.getByText("Paso 1")).toBeVisible();
+  await expect(page.getByText("Paso 2")).toBeVisible();
+  await expect(page.getByText("Paso 3")).toBeVisible();
   await expect(page.getByRole("button", { name: "Iniciar con email" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Crear cuenta" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Enviar email de recuperacion" })).toBeVisible();
