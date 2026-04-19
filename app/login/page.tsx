@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import {
   requestPasswordResetWithNext,
+  resendSignupConfirmationWithNext,
   signInWithPasswordWithNext,
   signUpWithPasswordWithNext,
 } from "@/app/auth/actions";
@@ -15,8 +16,13 @@ type LoginAuthError =
   | "email_not_confirmed"
   | "email_signup_failed"
   | "email_signin_failed"
+  | "email_resend_failed"
   | "email_recovery_failed";
-type LoginAuthStatus = "signup_check_email" | "password_reset_email_sent" | "password_updated";
+type LoginAuthStatus =
+  | "signup_check_email"
+  | "signup_confirmation_resent"
+  | "password_reset_email_sent"
+  | "password_updated";
 
 type LoginPageProps = {
   searchParams?: Promise<{
@@ -43,6 +49,7 @@ function parseAuthError(value: string | undefined): LoginAuthError | null {
     value === "email_not_confirmed" ||
     value === "email_signup_failed" ||
     value === "email_signin_failed" ||
+    value === "email_resend_failed" ||
     value === "email_recovery_failed"
   ) {
     return value;
@@ -54,6 +61,7 @@ function parseAuthError(value: string | undefined): LoginAuthError | null {
 function parseAuthStatus(value: string | undefined): LoginAuthStatus | null {
   if (
     value === "signup_check_email" ||
+    value === "signup_confirmation_resent" ||
     value === "password_reset_email_sent" ||
     value === "password_updated"
   ) {
@@ -82,6 +90,10 @@ function authErrorMessage(authError: LoginAuthError): string {
 
   if (authError === "email_signup_failed") {
     return "No pudimos crear tu cuenta en este momento. Reintenta en unos segundos.";
+  }
+
+  if (authError === "email_resend_failed") {
+    return "No pudimos reenviar el email de confirmacion en este momento. Reintenta en unos segundos.";
   }
 
   if (authError === "email_recovery_failed") {
@@ -135,6 +147,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         {authStatus === "signup_check_email" ? (
           <div className="mt-4 rounded-sm border border-emerald-300/40 bg-emerald-300/10 p-3 text-xs leading-5 text-emerald-100">
             Creamos tu cuenta para {emailValue || "tu email"}. Revisa tu inbox para confirmar el correo antes de iniciar sesion.
+          </div>
+        ) : null}
+
+        {authStatus === "signup_confirmation_resent" ? (
+          <div className="mt-4 rounded-sm border border-emerald-300/40 bg-emerald-300/10 p-3 text-xs leading-5 text-emerald-100">
+            Reenviamos el email de confirmacion a {emailValue || "tu email"}. Revisa inbox y spam/promociones.
           </div>
         ) : null}
 
@@ -214,6 +232,27 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               className="w-full rounded-sm border border-violet-300/40 px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-violet-300 transition-colors hover:bg-violet-300/10"
             >
               Enviar email de recuperacion
+            </button>
+          </form>
+
+          <form action={resendSignupConfirmationWithNext} className="space-y-3 rounded-sm border border-white/10 p-3">
+            <input type="hidden" name="next" value={nextPath} />
+            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+              Reenviar confirmacion
+            </p>
+            <input
+              type="email"
+              name="email"
+              required
+              defaultValue={emailValue}
+              placeholder="tu@email.com"
+              className="w-full rounded-sm border border-white/20 bg-black/20 px-3 py-3 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-500 focus:border-cyan-300/60"
+            />
+            <button
+              type="submit"
+              className="w-full rounded-sm border border-teal-300/40 px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-teal-300 transition-colors hover:bg-teal-300/10"
+            >
+              Reenviar email de confirmacion
             </button>
           </form>
 

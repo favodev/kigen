@@ -12,10 +12,15 @@ type AuthErrorCode =
   | "email_not_confirmed"
   | "email_signup_failed"
   | "email_signin_failed"
+  | "email_resend_failed"
   | "email_recovery_failed"
   | "password_update_failed";
 
-type AuthStatusCode = "signup_check_email" | "password_reset_email_sent" | "password_updated";
+type AuthStatusCode =
+  | "signup_check_email"
+  | "signup_confirmation_resent"
+  | "password_reset_email_sent"
+  | "password_updated";
 
 function sanitizeNextPath(nextPath: string): string {
   if (!nextPath.startsWith("/")) {
@@ -41,7 +46,7 @@ async function getBaseUrl(): Promise<string> {
 
 function mapAuthErrorCode(
   message: string,
-  flow: "signin" | "signup" | "recovery" | "update_password",
+  flow: "signin" | "signup" | "resend_signup" | "recovery" | "update_password",
 ): AuthErrorCode {
   const lowered = message.toLowerCase();
 
@@ -63,6 +68,10 @@ function mapAuthErrorCode(
 
   if (flow === "signup") {
     return "email_signup_failed";
+  }
+
+  if (flow === "resend_signup") {
+    return "email_resend_failed";
   }
 
   if (flow === "recovery") {
@@ -174,6 +183,33 @@ async function requestPasswordReset(email: string, nextPath: string) {
 
   redirectToLoginWithState(safeNextPath, {
     authStatus: "password_reset_email_sent",
+    email,
+  });
+}
+
+async function resendSignupConfirmation(email: string, nextPath: string) {
+  const supabase = await createSupabaseServerClient();
+  const baseUrl = await getBaseUrl();
+  const safeNextPath = sanitizeNextPath(nextPath);
+  const redirectTo = `${baseUrl}/auth/callback?next=${encodeURIComponent(safeNextPath)}`;
+
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: {
+      emailRedirectTo: redirectTo,
+    },
+  });
+
+  if (error) {
+    redirectToLoginWithState(safeNextPath, {
+      authError: mapAuthErrorCode(error.message ?? "", "resend_signup"),
+      email,
+    });
+  }
+
+  redirectToLoginWithState(safeNextPath, {
+    authStatus: "signup_confirmation_resent",
     email,
   });
 }
@@ -296,6 +332,20 @@ export async function updatePasswordAfterRecoveryWithNext(formData: FormData) {
   }
 
   await updatePasswordAfterRecovery(password, nextPath);
+}
+
+export async function resendSignupConfirmationWithNext(formData: FormData) {
+  const nextPath = nextFromFormData(formData);
+  const email = emailFromFormData(formData);
+
+  if (!isLikelyEmail(email)) {
+    redirectToLoginWithState(nextPath, {
+      authError: "email_invalid",
+      email,
+    });
+  }
+
+  await resendSignupConfirmation(email, nextPath);
 }
 
 export async function signOut() {
