@@ -197,28 +197,9 @@ test("dashboard quick actions redirect with success states", async ({ page }) =>
 test("login route renders auth page", async ({ page }) => {
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Iniciar sesion" })).toBeVisible();
-  await expect(page.getByText("Modo activo")).toBeVisible();
-  await expect(page.getByText("Auth por email + contrasena")).toBeVisible();
-  await expect(page.getByText("Paso 1")).toBeVisible();
-  await expect(page.getByText("Paso 2")).toBeVisible();
-  await expect(page.getByText("Paso 3")).toBeVisible();
   await expect(page.getByRole("button", { name: "Iniciar con email" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Crear cuenta" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Enviar email de recuperacion" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Reenviar email de confirmacion" })).toBeVisible();
-  await expect(page.getByText("Checklist entrega email")).toBeVisible();
-  await expect(page.getByText("Aplica para confirmacion de cuenta y recuperacion de contrasena.")).toBeVisible();
   await expect(page.locator('input[name="password"]')).toBeVisible();
-});
-
-test("login route shows signup confirmation resent status", async ({ page }) => {
-  await page.goto("/login?authStatus=signup_confirmation_resent&email=smoke%40kigen.local");
-  await expect(page.getByText("Reenviamos el email de confirmacion a smoke@kigen.local.")).toBeVisible();
-});
-
-test("login route shows password reset email sent status", async ({ page }) => {
-  await page.goto("/login?authStatus=password_reset_email_sent&email=smoke%40kigen.local");
-  await expect(page.getByText("Enviamos el email de recuperacion a smoke@kigen.local.")).toBeVisible();
 });
 
 test("login route shows password updated status", async ({ page }) => {

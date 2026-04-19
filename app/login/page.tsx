@@ -2,8 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import {
-  requestPasswordResetWithNext,
-  resendSignupConfirmationWithNext,
   signInWithPasswordWithNext,
   signUpWithPasswordWithNext,
 } from "@/app/auth/actions";
@@ -15,14 +13,8 @@ type LoginAuthError =
   | "invalid_credentials"
   | "email_not_confirmed"
   | "email_signup_failed"
-  | "email_signin_failed"
-  | "email_resend_failed"
-  | "email_recovery_failed";
-type LoginAuthStatus =
-  | "signup_check_email"
-  | "signup_confirmation_resent"
-  | "password_reset_email_sent"
-  | "password_updated";
+  | "email_signin_failed";
+type LoginAuthStatus = "signup_check_email" | "password_updated";
 
 type LoginPageProps = {
   searchParams?: Promise<{
@@ -48,9 +40,7 @@ function parseAuthError(value: string | undefined): LoginAuthError | null {
     value === "invalid_credentials" ||
     value === "email_not_confirmed" ||
     value === "email_signup_failed" ||
-    value === "email_signin_failed" ||
-    value === "email_resend_failed" ||
-    value === "email_recovery_failed"
+    value === "email_signin_failed"
   ) {
     return value;
   }
@@ -59,12 +49,7 @@ function parseAuthError(value: string | undefined): LoginAuthError | null {
 }
 
 function parseAuthStatus(value: string | undefined): LoginAuthStatus | null {
-  if (
-    value === "signup_check_email" ||
-    value === "signup_confirmation_resent" ||
-    value === "password_reset_email_sent" ||
-    value === "password_updated"
-  ) {
+  if (value === "signup_check_email" || value === "password_updated") {
     return value;
   }
 
@@ -90,14 +75,6 @@ function authErrorMessage(authError: LoginAuthError): string {
 
   if (authError === "email_signup_failed") {
     return "No pudimos crear tu cuenta en este momento. Reintenta en unos segundos.";
-  }
-
-  if (authError === "email_resend_failed") {
-    return "No pudimos reenviar el email de confirmacion en este momento. Reintenta en unos segundos.";
-  }
-
-  if (authError === "email_recovery_failed") {
-    return "No pudimos enviar el email de recuperacion en este momento. Reintenta en unos segundos.";
   }
 
   return "No pudimos iniciar sesion por email en este momento. Reintenta en unos segundos.";
@@ -138,30 +115,6 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           Usa tu email y contrasena para entrar a KIGEN.
         </p>
 
-        <div className="mt-4 rounded-sm border border-cyan-300/20 bg-cyan-300/5 p-3">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-cyan-200">
-            Modo activo
-          </p>
-          <p className="mt-1 text-xs leading-5 text-slate-300">
-            Auth por email + contrasena, con confirmacion de cuenta y recuperacion integrada.
-          </p>
-        </div>
-
-        <div className="mt-3 grid gap-2 sm:grid-cols-3">
-          <article className="rounded-sm border border-white/10 bg-black/20 p-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-200">Paso 1</p>
-            <p className="mt-1 text-[11px] leading-5 text-slate-300">Crea cuenta con email y contrasena.</p>
-          </article>
-          <article className="rounded-sm border border-white/10 bg-black/20 p-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-200">Paso 2</p>
-            <p className="mt-1 text-[11px] leading-5 text-slate-300">Confirma tu email desde el enlace recibido.</p>
-          </article>
-          <article className="rounded-sm border border-white/10 bg-black/20 p-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-violet-200">Paso 3</p>
-            <p className="mt-1 text-[11px] leading-5 text-slate-300">Inicia sesion o recupera acceso desde aqui.</p>
-          </article>
-        </div>
-
         {authError ? (
           <div className="mt-4 rounded-sm border border-amber-300/40 bg-amber-300/10 p-3 text-xs leading-5 text-amber-100">
             {authErrorMessage(authError)}
@@ -171,18 +124,6 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         {authStatus === "signup_check_email" ? (
           <div className="mt-4 rounded-sm border border-emerald-300/40 bg-emerald-300/10 p-3 text-xs leading-5 text-emerald-100">
             Creamos tu cuenta para {emailValue || "tu email"}. Revisa tu inbox para confirmar el correo antes de iniciar sesion.
-          </div>
-        ) : null}
-
-        {authStatus === "signup_confirmation_resent" ? (
-          <div className="mt-4 rounded-sm border border-emerald-300/40 bg-emerald-300/10 p-3 text-xs leading-5 text-emerald-100">
-            Reenviamos el email de confirmacion a {emailValue || "tu email"}. Revisa inbox y spam/promociones.
-          </div>
-        ) : null}
-
-        {authStatus === "password_reset_email_sent" ? (
-          <div className="mt-4 rounded-sm border border-emerald-300/40 bg-emerald-300/10 p-3 text-xs leading-5 text-emerald-100">
-            Enviamos el email de recuperacion a {emailValue || "tu email"}. Revisa inbox y spam/promociones.
           </div>
         ) : null}
 
@@ -237,63 +178,6 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               Si todavia no tenes cuenta, usa Crear cuenta con tu email y contrasena.
             </p>
           </form>
-
-          <form action={requestPasswordResetWithNext} className="space-y-3 rounded-sm border border-white/10 p-3">
-            <input type="hidden" name="next" value={nextPath} />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
-              Recuperar acceso
-            </p>
-            <input
-              type="email"
-              name="email"
-              required
-              defaultValue={emailValue}
-              placeholder="tu@email.com"
-              className="w-full rounded-sm border border-white/20 bg-black/20 px-3 py-3 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-500 focus:border-cyan-300/60"
-            />
-            <button
-              type="submit"
-              className="w-full rounded-sm border border-violet-300/40 px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-violet-300 transition-colors hover:bg-violet-300/10"
-            >
-              Enviar email de recuperacion
-            </button>
-          </form>
-
-          <form action={resendSignupConfirmationWithNext} className="space-y-3 rounded-sm border border-white/10 p-3">
-            <input type="hidden" name="next" value={nextPath} />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
-              Reenviar confirmacion
-            </p>
-            <input
-              type="email"
-              name="email"
-              required
-              defaultValue={emailValue}
-              placeholder="tu@email.com"
-              className="w-full rounded-sm border border-white/20 bg-black/20 px-3 py-3 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-500 focus:border-cyan-300/60"
-            />
-            <button
-              type="submit"
-              className="w-full rounded-sm border border-teal-300/40 px-4 py-3 text-left text-xs font-bold uppercase tracking-widest text-teal-300 transition-colors hover:bg-teal-300/10"
-            >
-              Reenviar email de confirmacion
-            </button>
-          </form>
-
-          <section className="rounded-sm border border-cyan-300/20 bg-cyan-300/5 p-3">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-cyan-200">
-              Checklist entrega email
-            </p>
-            <ul className="mt-2 space-y-1 text-[11px] leading-5 text-slate-300">
-              <li>1) Revisa inbox, spam y promociones.</li>
-              <li>2) Espera 1-2 minutos y evita reenviar multiples veces seguidas.</li>
-              <li>3) Confirma que escribiste exactamente el email esperado.</li>
-              <li>4) Si usas dominio corporativo, valida filtros/antispam del dominio.</li>
-            </ul>
-            <p className="mt-2 text-[11px] leading-5 text-slate-400">
-              Aplica para confirmacion de cuenta y recuperacion de contrasena.
-            </p>
-          </section>
         </div>
 
         <div className="mt-6 border-t border-white/10 pt-4">
