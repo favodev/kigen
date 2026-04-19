@@ -216,6 +216,21 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               Enviar email de recuperacion
             </button>
           </form>
+
+          <section className="rounded-sm border border-cyan-300/20 bg-cyan-300/5 p-3">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-cyan-200">
+              Checklist entrega email
+            </p>
+            <ul className="mt-2 space-y-1 text-[11px] leading-5 text-slate-300">
+              <li>1) Revisa inbox, spam y promociones.</li>
+              <li>2) Espera 1-2 minutos y evita reenviar multiples veces seguidas.</li>
+              <li>3) Confirma que escribiste exactamente el email esperado.</li>
+              <li>4) Si usas dominio corporativo, valida filtros/antispam del dominio.</li>
+            </ul>
+            <p className="mt-2 text-[11px] leading-5 text-slate-400">
+              Aplica para confirmacion de cuenta y recuperacion de contrasena.
+            </p>
+          </section>
         </div>
 
         <div className="mt-6 border-t border-white/10 pt-4">

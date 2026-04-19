@@ -200,6 +200,8 @@ test("login route renders auth page", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Iniciar con email" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Crear cuenta" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Enviar email de recuperacion" })).toBeVisible();
+  await expect(page.getByText("Checklist entrega email")).toBeVisible();
+  await expect(page.getByText("Aplica para confirmacion de cuenta y recuperacion de contrasena.")).toBeVisible();
   await expect(page.locator('input[name="password"]')).toBeVisible();
 });
 
